@@ -27,8 +27,37 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("authToken");
   };
 
+  const updateProfile = async (userData) => {
+    // Simulamos actualización
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        setUser((prev) => ({ ...prev, ...userData }));
+        resolve();
+      }, 1000);
+    });
+  };
+
+  const updatePassword = async (currentPassword, newPassword) => {
+    // Simulamos cambio de contraseña
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve();
+      }, 1000);
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        login,
+        logout,
+        register,
+        updateProfile,
+        updatePassword,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
