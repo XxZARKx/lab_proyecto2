@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+.bg-login-page {
+  background-image: url("/src/assets/bg_login.png");
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.icon_login {
+  background-image: url("/src/assets/icon_login.png");
+  background-repeat: no-repeat;
+  background-size: cover;
+}
