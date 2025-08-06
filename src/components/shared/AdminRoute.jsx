@@ -4,7 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 const AdminRoute = () => {
   const { user } = useAuth();
 
-  return user?.role === "admin" ? <Outlet /> : <Navigate to="/" />;
+  return user?.rol === "ADMINISTRADOR" ? <Outlet /> : <Navigate to="/" />;
 };
 
 export default AdminRoute;

@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { API } from "../../api";
+import { fetchUserInfo } from "../../utils/api";
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,17 +18,46 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Simulación de login (reemplazar con llamada real a la API)
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      login({
-        id: "1",
-        email: username,
-        name: "Usuario Demo",
-        role: "user",
+      const response = await fetch(`${API}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          correo: email,
+          contrasena: password,
+        }),
       });
-      navigate("/");
+
+      if (!response.ok) {
+        throw new Error("Credenciales incorrectas");
+      }
+
+      const bearerToken = await response.text(); // string plano tipo: Bearer eyJ...
+      const token = bearerToken.replace("Bearer ", ""); // Quitamos el prefijo
+
+      localStorage.setItem("token", token); // token limpio
+
+      const userData = await fetchUserInfo(token);
+      localStorage.setItem("authToken", token);
+      localStorage.setItem("userInfo", JSON.stringify(userData));
+
+      login(userData, token);
+
+      switch (userData.rol) {
+        case "ADMINISTRADOR":
+          navigate("/admin");
+          break;
+        case "TECNICO":
+          navigate("/tecnico");
+          break;
+        case "USUARIO":
+          navigate("/usuario");
+          break;
+        default:
+          navigate("/no-autorizado");
+      }
     } catch (err) {
       setError("Credenciales incorrectas");
+      console.error(err);
       setLoading(false);
     }
   };
@@ -45,10 +76,7 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <div
-            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
-            role="alert"
-          >
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
             <span className="block sm:inline">{error}</span>
           </div>
         )}
@@ -57,20 +85,20 @@ export default function LoginPage() {
           <div className="space-y-4">
             <div>
               <label
-                htmlFor="username"
+                htmlFor="email"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Correo electrónico o nombre de usuario
+                Correo electrónico
               </label>
               <input
-                id="username"
-                name="username"
-                type="text"
+                id="email"
+                name="email"
+                type="email"
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Ingresa tu usuario o email"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md"
+                placeholder="Ingresa tu correo"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
 
@@ -86,7 +114,7 @@ export default function LoginPage() {
                 name="password"
                 type="password"
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-md"
                 placeholder="Ingresa tu contraseña"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -98,7 +126,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+              className={`w-full flex justify-center py-3 px-4 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 ${
                 loading ? "opacity-70 cursor-not-allowed" : ""
               }`}
             >
@@ -117,12 +145,12 @@ export default function LoginPage() {
                       r="10"
                       stroke="currentColor"
                       strokeWidth="4"
-                    ></circle>
+                    />
                     <path
                       className="opacity-75"
                       fill="currentColor"
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
+                    />
                   </svg>
                   Cargando...
                 </span>
