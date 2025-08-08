@@ -1,173 +1,311 @@
+// src/pages/UsuarioDashboard.jsx
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { API } from "../../api";
 import { useAuth } from "../../context/AuthContext";
-import { useNavigate } from "react-router-dom";
 import {
   PlusIcon,
   TicketIcon,
-  BellAlertIcon,
-  UserCircleIcon,
-  ArrowRightStartOnRectangleIcon,
+  BellIcon,
+  ArrowLeftStartOnRectangleIcon,
+  Bars3Icon,
+  XMarkIcon,
   ClockIcon,
-  DocumentCheckIcon,
+  CheckCircleIcon,
   XCircleIcon,
-  Cog6ToothIcon,
-  HandRaisedIcon,
 } from "@heroicons/react/24/solid";
 
 export default function UsuarioDashboard() {
-  const { token } = useAuth();
-  const [tickets, setTickets] = useState([]);
-  const { logout } = useAuth();
+  const { token, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const [tickets, setTickets] = useState([]);
+  const [filtered, setFiltered] = useState([]);
+  const [query, setQuery] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const fetchTickets = async () => {
       try {
-        const response = await fetch(`${API}/tickets/historial`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        const res = await fetch(`${API}/tickets/historial`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
-        const data = await response.json();
+        if (!res.ok) throw new Error();
+        const data = await res.json();
         setTickets(data);
-      } catch (error) {
-        console.error("Error al obtener tickets:", error);
+        setFiltered(data);
+      } catch {
+        // manejar error
       }
     };
-
     fetchTickets();
   }, [token]);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
+  useEffect(() => {
+    setFiltered(
+      tickets.filter((t) =>
+        t.titulo.toLowerCase().includes(query.toLowerCase())
+      )
+    );
+  }, [query, tickets]);
+
+  const counts = {
+    PENDIENTE: tickets.filter((t) => t.estado === "PENDIENTE").length,
+    CERRADO: tickets.filter((t) => t.estado === "CERRADO").length,
+    ANULADO: tickets.filter((t) => t.estado === "ANULADO").length,
+    TOTAL: tickets.length,
+  };
+
+  const navItems = [
+    {
+      to: "/usuario",
+      label: "Inicio",
+      icon: <TicketIcon className="h-5 w-5" />,
+    },
+    {
+      to: "/usuario/tickets",
+      label: "Pendientes",
+      icon: <ClockIcon className="h-5 w-5" />,
+    },
+    {
+      to: "/usuario/historial",
+      label: "Historial",
+      icon: <TicketIcon className="h-5 w-5" />,
+    },
+  ];
+
+  const badgeClasses = {
+    PENDIENTE: "bg-yellow-100 text-yellow-800",
+    ASIGNADO: "bg-blue-100 text-blue-800",
+    EN_PROCESO: "bg-orange-100 text-orange-800",
+    CERRADO: "bg-green-100 text-green-800",
+    ANULADO: "bg-red-100 text-red-800",
+    ALTA: "bg-red-100 text-red-800",
+    MEDIA: "bg-yellow-100 text-yellow-800",
+    BAJA: "bg-green-100 text-green-800",
   };
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex min-h-screen bg-gray-50 text-gray-800">
+      {/* Overlay en móvil */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-30 z-10"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-gray-900 text-white flex flex-col items-center py-8">
-        <div className="text-2xl font-bold mb-8 flex flex-col items-center">
-          <Cog6ToothIcon className="h-8 w-8 text-white" />
-          <div className="flex items-center gap-1">
-            <HandRaisedIcon className="h-5 w-5 text-yellow-300" />
-            ¡Bienvenido!
-          </div>
+      <aside
+        className={`fixed left-0 top-0 h-full w-64 bg-gray-900 text-white transform ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } transition-transform md:translate-x-0 z-20`}
+      >
+        <div className="flex items-center justify-between p-6">
+          <span className="text-xl font-bold">❖ HelpDesk</span>
+          <button className="md:hidden" onClick={() => setSidebarOpen(false)}>
+            <XMarkIcon className="h-6 w-6" />
+          </button>
         </div>
-        <nav className="space-y-4 w-full px-4">
-          <Link
-            to="/usuario"
-            className="flex items-center space-x-2 hover:text-yellow-400"
-          >
-            <TicketIcon className="h-5 w-5" />
-            <span>Inicio</span>
-          </Link>
-          <Link
-            to="/usuario/tickets"
-            className="flex items-center space-x-2 hover:text-yellow-400"
-          >
-            <TicketIcon className="h-5 w-5" />
-            <span>Ticket Pendiente</span>
-          </Link>
-          <Link
-            to="/usuario/historial"
-            className="flex items-center space-x-2 hover:text-yellow-400"
-          >
-            <TicketIcon className="h-5 w-5" />
-            <span>Historial de Ticket</span>
-          </Link>
+        <nav className="px-4 space-y-2">
+          {navItems.map(({ to, label, icon }) => (
+            <Link
+              key={to}
+              to={to}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition ${
+                location.pathname.startsWith(to)
+                  ? "bg-gray-700 font-semibold"
+                  : ""
+              }`}
+            >
+              {icon}
+              <span>{label}</span>
+            </Link>
+          ))}
         </nav>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 p-8">
+      {/* Main */}
+      <div className="flex-1 flex flex-col md:pl-64">
         {/* Header */}
-        <div className="flex justify-end mb-6 items-center space-x-4">
-          <BellAlertIcon className="h-6 w-6 text-yellow-400" />
-          <UserCircleIcon className="h-6 w-6 text-blue-600" />
-          <span className="font-semibold">Usuario</span>
-          <button onClick={handleLogout}>
-            <ArrowRightStartOnRectangleIcon className="h-6 w-6 text-red-500 cursor-pointer" />
-          </button>
-        </div>
+        <header className="flex items-center justify-between bg-white px-6 py-4 shadow">
+          <div className="flex items-center gap-4">
+            <button
+              className="md:hidden p-1"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Bars3Icon className="h-6 w-6 text-gray-600" />
+            </button>
+            <h1 className="text-2xl font-bold">Tablero de Usuario</h1>
+          </div>
+          <div className="flex items-center gap-4">
+            <BellIcon className="h-6 w-6 text-yellow-500" />
+            <span className="font-medium">Usuario</span>
+            <button
+              onClick={() => {
+                logout();
+                navigate("/login");
+              }}
+              className="p-1"
+            >
+              <ArrowLeftStartOnRectangleIcon className="h-6 w-6 text-red-500" />
+            </button>
+          </div>
+        </header>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          <div className="bg-gray-200 p-4 rounded text-center">
-            <ClockIcon className="h-6 w-6 mx-auto text-gray-700" />
-            <div>Pendiente</div>
-            <div className="text-xl font-bold">
-              {tickets.filter((t) => t.estado === "PENDIENTE").length}
-            </div>
-          </div>
-          <div className="bg-gray-200 p-4 rounded text-center">
-            <DocumentCheckIcon className="h-6 w-6 mx-auto text-green-600" />
-            <div>Completado</div>
-            <div className="text-xl font-bold">
-              {tickets.filter((t) => t.estado === "CERRADO").length}
-            </div>
-          </div>
-          <div className="bg-gray-200 p-4 rounded text-center">
-            <XCircleIcon className="h-6 w-6 mx-auto text-red-500" />
-            <div>Anulado</div>
-            <div className="text-xl font-bold">
-              {tickets.filter((t) => t.estado === "ANULADO").length}
-            </div>
-          </div>
-          <div className="bg-gray-300 p-4 rounded text-center">
-            <div>Total de Ticket</div>
-            <div className="text-3xl font-bold">{tickets.length}</div>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-6">
+          <StatCard
+            icon={<ClockIcon />}
+            label="Pendientes"
+            value={counts.PENDIENTE}
+            color="yellow"
+          />
+          <StatCard
+            icon={<CheckCircleIcon />}
+            label="Completados"
+            value={counts.CERRADO}
+            color="green"
+          />
+          <StatCard
+            icon={<XCircleIcon />}
+            label="Anulados"
+            value={counts.ANULADO}
+            color="red"
+          />
+          <StatCard
+            icon={<TicketIcon />}
+            label="Total Tickets"
+            value={counts.TOTAL}
+            color="purple"
+          />
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex justify-end mb-4 gap-4">
-          <Link
-            to="/usuario/tickets/nuevo"
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-1"
-          >
-            <PlusIcon className="h-4 w-4" /> Nuevo Ticket
-          </Link>
-          <Link
-            to="/usuario/historial"
-            className="border border-black px-4 py-2 rounded flex items-center gap-1"
-          >
-            <TicketIcon className="h-4 w-4" /> Ver Todos
-          </Link>
+        {/* Actions + Search */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6">
+          <div className="flex gap-3">
+            <Link
+              to="/usuario/tickets/nuevo"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Nuevo Ticket
+            </Link>
+            <Link
+              to="/usuario/historial"
+              className="flex items-center gap-2 border border-gray-400 hover:border-gray-600 text-gray-700 px-4 py-2 rounded-lg transition"
+            >
+              <TicketIcon className="h-5 w-5" />
+              Ver Historial
+            </Link>
+          </div>
+          <div className="relative w-full sm:w-64">
+            <input
+              type="text"
+              placeholder="Buscar por título..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <svg
+              className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1116.65 16.65z"
+              />
+            </svg>
+          </div>
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-gray-900 text-white rounded">
-            <thead>
+        <div className="p-6 overflow-x-auto">
+          <table className="min-w-full bg-white rounded-lg overflow-hidden">
+            <thead className="bg-gray-100">
               <tr>
-                <th className="py-2 px-4">N_TICKET</th>
-                <th className="py-2 px-4">TITULO</th>
-                <th className="py-2 px-4">DESCRIPTION</th>
-                <th className="py-2 px-4">ESTADO</th>
-                <th className="py-2 px-4">PRIORIDAD</th>
-                <th className="py-2 px-4">FECHA_CREACION</th>
+                {["N°", "Título", "Estado", "Prioridad", "Fecha"].map(
+                  (h, i) => (
+                    <th
+                      key={i}
+                      className="px-4 py-2 text-left text-sm font-medium text-gray-600 uppercase"
+                    >
+                      {h}
+                    </th>
+                  )
+                )}
               </tr>
             </thead>
             <tbody>
-              {tickets.map((ticket) => (
-                <tr key={ticket.id} className="border-t border-gray-700">
-                  <td className="py-2 px-4">{ticket.id}</td>
-                  <td className="py-2 px-4">{ticket.titulo}</td>
-                  <td className="py-2 px-4">{ticket.descripcion}</td>
-                  <td className="py-2 px-4">{ticket.estado}</td>
-                  <td className="py-2 px-4">{ticket.prioridad}</td>
-                  <td className="py-2 px-4">
-                    {new Date(ticket.fechaCreacion).toLocaleDateString()}
+              {filtered.map((t, idx) => (
+                <tr
+                  key={t.id}
+                  className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                >
+                  <td className="px-4 py-2 text-sm">{t.id}</td>
+                  <td className="px-4 py-2 text-sm">{t.titulo}</td>
+                  <td className="px-4 py-2">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        badgeClasses[t.estado]
+                      }`}
+                    >
+                      {t.estado.replace("_", " ")}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        badgeClasses[t.prioridad]
+                      }`}
+                    >
+                      {t.prioridad}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 text-sm text-gray-500">
+                    {new Date(t.fechaCreacion).toLocaleDateString()}
                   </td>
                 </tr>
               ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td
+                    colSpan="5"
+                    className="px-4 py-6 text-center text-gray-500"
+                  >
+                    No se encontraron tickets.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
-      </main>
+      </div>
+    </div>
+  );
+}
+
+// Componente reutilizable para cards
+function StatCard({ icon, label, value, color }) {
+  const colors = {
+    yellow: "bg-yellow-100 text-yellow-800",
+    green: "bg-green-100 text-green-800",
+    red: "bg-red-100 text-red-800",
+    purple: "bg-purple-100 text-purple-800",
+  };
+  return (
+    <div className="flex items-center gap-4 bg-white rounded-lg shadow p-4">
+      <div className={`p-3 rounded-lg ${colors[color]}`}>{icon}</div>
+      <div>
+        <div className="text-sm text-gray-500">{label}</div>
+        <div className="text-2xl font-bold">{value}</div>
+      </div>
     </div>
   );
 }

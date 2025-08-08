@@ -37,11 +37,11 @@ function App() {
         <Routes>
           {/* 🌐 Rutas públicas */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/home" element={<DashboardPage />} />
 
           {/* 🔐 Rutas protegidas */}
           <Route element={<PrivateRoute />}>
             {/* 📌 Rutas accesibles por cualquier usuario autenticado */}
-            <Route path="/" element={<DashboardPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/tickets" element={<TicketListPage />} />
 
@@ -61,7 +61,7 @@ function App() {
               element={<TicketsAsignados />}
             />
             <Route
-              path="/tecnico/actualizar-estado"
+              path="/tecnico/tickets/:id/actualizar"
               element={<ActualizarEstado />}
             />
 

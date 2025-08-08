@@ -1,235 +1,121 @@
+// src/pages/LandingPage.jsx
+import { useEffect } from "react";
+import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { Link } from "react-router-dom";
 import {
   TicketIcon,
-  PlusCircleIcon,
+  ShieldCheckIcon,
   ClockIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  ArrowRightIcon,
-  UserCircleIcon,
-} from "@heroicons/react/16/solid";
-import TicketStatusBadge from "../../components/shared/TicketStatusBadge";
-import { PriorityBadge } from "../../components/shared/PriorityBadge";
+} from "@heroicons/react/24/outline";
 
-export default function DashboardPage() {
+export default function LandingPage() {
   const { user } = useAuth();
 
-  // Datos simulados
-  const ticketStats = {
-    pending: 5,
-    cancelled: 2,
-    completed: 8,
-    total: 15,
-  };
-
-  const recentTickets = [
-    {
-      id: "TKT-1001",
-      title: "Problema con el correo electrónico",
-      description: "No puedo acceder a mi cuenta de correo desde esta mañana",
-      status: "Pendiente",
-      priority: "Alta",
-      createdAt: "15/05/2023",
-    },
-    {
-      id: "TKT-1002",
-      title: "Software no funciona",
-      description: "El programa de contabilidad no inicia correctamente",
-      status: "En proceso",
-      priority: "Media",
-      createdAt: "14/05/2023",
-    },
-    {
-      id: "TKT-1003",
-      title: "Solicitud de acceso",
-      description: "Necesito acceso a la carpeta compartida de recursos",
-      status: "Completado",
-      priority: "Baja",
-      createdAt: "10/05/2023",
-    },
-  ];
+  // Si ya está logeado, redirige según su rol:
+  if (user) {
+    switch (user.rol) {
+      case "ADMINISTRADOR":
+        return <Navigate to="/admin" replace />;
+      case "TECNICO":
+        return <Navigate to="/tecnico" replace />;
+      case "USUARIO":
+        return <Navigate to="/usuario" replace />;
+      default:
+        return <Navigate to="/home" replace />;
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      {/* Header con bienvenida */}
-      <div className="mb-8 flex justify-between">
-        <h1 className="text-3xl font-bold text-gray-800">
-          ¡Hola, {user?.name}!
-          <p className="text-gray-600 mt-2 text-sm">
-            Aquí puedes gestionar tus tickets de soporte
-          </p>
-        </h1>
-        <Link
-          to="/profile"
-          className="flex items-center px-4 py-2 text-2xl text-gray-700 hover:bg-gray-100 "
-        >
-          <UserCircleIcon className="h-8 w-8 mr-3 text-gray-500" />
-          Mi Perfil
+    <div className="min-h-screen flex flex-col">
+      {/* Navbar */}
+      <nav className="flex items-center justify-between px-8 py-4 bg-white shadow">
+        <Link to="/" className="text-2xl font-bold text-blue-600">
+          HelpDeskX
         </Link>
-      </div>
-
-      {/* Estadísticas en cards modernas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard
-          icon={<ClockIcon className="h-6 w-6" />}
-          title="Pendientes"
-          value={ticketStats.pending}
-          color="border-l-blue-500"
-          link="/tickets?status=pending"
-        />
-        <StatCard
-          icon={<XCircleIcon className="h-6 w-6" />}
-          title="Anulados"
-          value={ticketStats.cancelled}
-          color="border-l-red-500"
-          link="/tickets?status=cancelled"
-        />
-        <StatCard
-          icon={<CheckCircleIcon className="h-6 w-6" />}
-          title="Completados"
-          value={ticketStats.completed}
-          color="border-l-green-500"
-          link="/tickets?status=completed"
-        />
-        <StatCard
-          icon={<TicketIcon className="h-6 w-6" />}
-          title="Total Tickets"
-          value={ticketStats.total}
-          color="border-l-purple-500"
-          link="/tickets"
-        />
-      </div>
-
-      {/* Sección de acciones rápidas */}
-      <div className="bg-white rounded-xl shadow-sm p-6 mb-8 border border-gray-100">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-800">
-              Acciones rápidas
-            </h2>
-            <p className="text-gray-600">Gestiona tus solicitudes de soporte</p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <Link
-              to="/tickets/new"
-              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-            >
-              <PlusCircleIcon className="h-5 w-5" />
-              Nuevo Ticket
-            </Link>
-            <Link
-              to="/tickets"
-              className="flex items-center justify-center gap-2 border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
-            >
-              <TicketIcon className="h-5 w-5" />
-              Ver todos
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabla de tickets recientes mejorada */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-800">
-              Tickets Recientes
-            </h2>
-            <p className="text-gray-600">Tus solicitudes más recientes</p>
-          </div>
+        <div className="space-x-4">
           <Link
-            to="/tickets"
-            className="flex items-center text-sm text-blue-600 hover:text-blue-800"
+            to="/login"
+            className="px-4 py-2 font-medium text-blue-600 hover:text-white hover:bg-blue-600 rounded"
           >
-            Ver todos <ArrowRightIcon className="h-4 w-4 ml-1" />
+            Iniciar sesión
+          </Link>
+          <Link
+            to="/register"
+            className="px-4 py-2 font-medium text-white bg-blue-600 hover:bg-blue-700 rounded"
+          >
+            Registrarse
           </Link>
         </div>
+      </nav>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ticket
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Asunto
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Estado
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Prioridad
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fecha
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {recentTickets.map((ticket) => (
-                <tr
-                  key={ticket.id}
-                  className="hover:bg-gray-50 transition-colors"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Link
-                      to={`/tickets/${ticket.id}`}
-                      className="text-blue-600 hover:text-blue-800 font-medium"
-                    >
-                      {ticket.id}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-gray-900">
-                      {ticket.title}
-                    </div>
-                    <div className="text-sm text-gray-500 line-clamp-1">
-                      {ticket.description}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <TicketStatusBadge status={ticket.status} />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <PriorityBadge priority={ticket.priority} />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {ticket.createdAt}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Hero */}
+      <header className="flex-grow bg-gradient-to-r from-blue-50 to-blue-100 flex flex-col items-center justify-center text-center px-6">
+        <h1 className="text-4xl md:text-5xl font-extrabold text-gray-800 mb-4">
+          Simplifica la gestión de incidencias
+        </h1>
+        <p className="text-lg text-gray-600 mb-8 max-w-xl">
+          Registra, asigna y da seguimiento a tus tickets de soporte de forma
+          rápida y organizada.
+        </p>
+        <div className="space-x-4">
+          <Link
+            to="/register"
+            className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow hover:bg-blue-700 transition"
+          >
+            Crear cuenta
+          </Link>
+          <Link
+            to="/login"
+            className="px-6 py-3 border border-blue-600 text-blue-600 font-semibold rounded-lg hover:bg-blue-50 transition"
+          >
+            Ya tengo cuenta
+          </Link>
         </div>
-      </div>
+      </header>
+
+      {/* Features */}
+      <section className="py-16 bg-white">
+        <div className="max-w-5xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="flex flex-col items-center text-center p-6 border rounded-lg shadow-sm hover:shadow-md transition">
+            <TicketIcon className="w-12 h-12 text-blue-500 mb-4" />
+            <h3 className="text-xl font-semibold mb-2">Genera Tickets</h3>
+            <p className="text-gray-600">
+              Crea solicitudes con toda la información necesaria en segundos.
+            </p>
+          </div>
+          <div className="flex flex-col items-center text-center p-6 border rounded-lg shadow-sm hover:shadow-md transition">
+            <ClockIcon className="w-12 h-12 text-yellow-500 mb-4" />
+            <h3 className="text-xl font-semibold mb-2">
+              Monitorea el Progreso
+            </h3>
+            <p className="text-gray-600">
+              Visualiza el estado de cada ticket y recibe notificaciones.
+            </p>
+          </div>
+          <div className="flex flex-col items-center text-center p-6 border rounded-lg shadow-sm hover:shadow-md transition">
+            <ShieldCheckIcon className="w-12 h-12 text-green-500 mb-4" />
+            <h3 className="text-xl font-semibold mb-2">Servicio Confiable</h3>
+            <p className="text-gray-600">
+              Mantén un historial completo y seguro de todas tus incidencias.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-800 text-gray-200 py-6">
+        <div className="max-w-4xl mx-auto text-center space-y-2">
+          <p>© 2025 HelpDeskX. Todos los derechos reservados.</p>
+          <div className="space-x-4">
+            <Link to="#" className="hover:underline">
+              Política de Privacidad
+            </Link>
+            <Link to="#" className="hover:underline">
+              Términos de Uso
+            </Link>
+          </div>
+        </div>
+      </footer>
     </div>
-  );
-}
-
-// Componente StatCard mejorado
-function StatCard({ icon, title, value, color, link }) {
-  return (
-    <Link
-      to={link}
-      className="bg-white rounded-xl shadow-sm p-6 border-l-4 border-gray-100 hover:shadow-md transition-shadow"
-      style={{ borderLeftColor: color }}
-    >
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <p className="mt-1 text-3xl font-semibold text-gray-900">{value}</p>
-        </div>
-        <div
-          className={`p-3 rounded-full bg-opacity-10 ${color.replace(
-            "border-l-",
-            "bg-"
-          )}`}
-        >
-          {icon}
-        </div>
-      </div>
-    </Link>
   );
 }

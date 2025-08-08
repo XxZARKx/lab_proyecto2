@@ -1,9 +1,18 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, Fragment } from "react";
 import { API } from "../../api";
 import { useAuth } from "../../context/AuthContext";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeftIcon } from "@heroicons/react/24/solid";
+import { Dialog, Transition } from "@headlessui/react";
+
+const priorityClasses = {
+  ALTA: "border-l-red-500",
+  MEDIA: "border-l-yellow-500",
+  BAJA: "border-l-green-500",
+};
+
+const CATEGORY_OPTIONS = ["Hardware", "Software", "Redes", "Correo", "Otro"];
 
 export default function AsignarTicketPage() {
   const navigate = useNavigate();
@@ -14,151 +23,217 @@ export default function AsignarTicketPage() {
   const [asignacion, setAsignacion] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [priorityFilter, setPriorityFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+
   useEffect(() => {
-    const fetchData = async () => {
+    (async () => {
       try {
-        const resTickets = await fetch(`${API}/tickets/pendientes`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const resTecnicos = await fetch(`${API}/usuarios/tecnicos`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        const dataTickets = await resTickets.json();
-        const dataTecnicos = await resTecnicos.json();
-
-        setTickets(dataTickets);
-        setTecnicos(dataTecnicos);
-      } catch (error) {
+        const [resT, resTec] = await Promise.all([
+          fetch(`${API}/tickets/pendientes`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${API}/usuarios/tecnicos`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+        if (!resT.ok || !resTec.ok) throw new Error();
+        setTickets(await resT.json());
+        setTecnicos(await resTec.json());
+      } catch {
         toast.error("Error al cargar tickets o técnicos");
-        console.error("Error:", error);
       }
-    };
-
-    fetchData();
+    })();
   }, [token]);
 
   const abrirModal = (ticket) => {
     setSelectedTicket(ticket);
     setAsignacion("");
   };
-
-  const cerrarModal = () => {
-    setSelectedTicket(null);
-    setAsignacion("");
-  };
+  const cerrarModal = () => setSelectedTicket(null);
 
   const handleAsignar = async () => {
-    if (!asignacion) {
-      toast.warn("Selecciona un técnico");
-      return;
-    }
-
+    if (!asignacion) return toast.warn("Selecciona un técnico");
     setLoading(true);
-
     try {
       const res = await fetch(
         `${API}/tickets/${selectedTicket.id}/asignar?tecnicoId=${asignacion}`,
-        {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { method: "PUT", headers: { Authorization: `Bearer ${token}` } }
       );
-
-      if (res.ok) {
-        toast.success("Ticket asignado correctamente");
-        setTickets((prev) => prev.filter((t) => t.id !== selectedTicket.id));
-        cerrarModal();
-      } else {
-        throw new Error("Fallo en la asignación");
-      }
-    } catch (err) {
+      if (!res.ok) throw new Error();
+      toast.success("Ticket asignado correctamente");
+      setTickets((t) => t.filter((x) => x.id !== selectedTicket.id));
+      cerrarModal();
+    } catch {
       toast.error("Error al asignar el ticket");
     } finally {
       setLoading(false);
     }
   };
 
+  // Aplica filtros
+  const filtered = tickets.filter((t) => {
+    return (
+      (!priorityFilter || t.prioridad === priorityFilter) &&
+      (!categoryFilter || t.categoria === categoryFilter)
+    );
+  });
+
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      {/* Botón para volver */}
-      <button
-        onClick={() => navigate(-1)}
-        className="mb-6 flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded shadow transition"
-      >
-        <ArrowLeft className="w-5 h-5" />
-        Volver
-      </button>
-
-      <h2 className="text-2xl font-bold mb-6 text-center">
-        Asignar Tickets Pendientes
-      </h2>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        {tickets.map((ticket) => (
-          <div
-            key={ticket.id}
-            onClick={() => abrirModal(ticket)}
-            className="bg-white rounded-lg shadow hover:shadow-lg p-4 cursor-pointer transition"
+    <div className="bg-gray-50 min-h-screen py-10 px-4">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="p-2 bg-white border rounded-full hover:bg-gray-100 transition"
           >
-            <h3 className="text-lg font-semibold text-blue-700">
-              {ticket.titulo}
-            </h3>
-            <p className="text-sm text-gray-600 mt-1">{ticket.descripcion}</p>
-            <p className="mt-2 text-sm">
-              <span className="font-medium">Prioridad:</span> {ticket.prioridad}
+            <ArrowLeftIcon className="w-5 h-5 text-gray-600" />
+          </button>
+          <h1 className="ml-4 text-3xl font-bold text-gray-900">
+            Asignar Tickets Pendientes
+          </h1>
+        </div>
+
+        {/* Filtros */}
+        <div className="flex flex-wrap gap-4 mb-8">
+          <select
+            className="border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300"
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+          >
+            <option value="">Todas las prioridades</option>
+            <option value="ALTA">Alta</option>
+            <option value="MEDIA">Media</option>
+            <option value="BAJA">Baja</option>
+          </select>
+
+          <select
+            className="border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+          >
+            <option value="">Todas las categorías</option>
+            {CATEGORY_OPTIONS.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Grid de tickets */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filtered.map((ticket) => (
+            <div
+              key={ticket.id}
+              onClick={() => abrirModal(ticket)}
+              className={`
+                bg-white rounded-lg shadow hover:shadow-lg p-6 cursor-pointer transition
+                ${
+                  priorityClasses[ticket.prioridad] || "border-l-gray-300"
+                } border-l-4
+              `}
+            >
+              <h3 className="text-xl font-semibold text-gray-800">
+                {ticket.titulo}
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                <strong>Categoría:</strong> {ticket.categoria || "—"}
+              </p>
+              <p className="mt-2 text-gray-600 line-clamp-3">
+                {ticket.descripcion}
+              </p>
+              <div className="mt-4 flex justify-between text-sm text-gray-500">
+                <span>Prioridad: {ticket.prioridad}</span>
+                <span>
+                  {new Date(ticket.fechaCreacion).toLocaleDateString()}
+                </span>
+              </div>
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <p className="col-span-full text-center text-gray-500">
+              No hay tickets que coincidan con los filtros.
             </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Fecha: {new Date(ticket.fechaCreacion).toLocaleDateString()}
-            </p>
-          </div>
-        ))}
+          )}
+        </div>
       </div>
 
-      {selectedTicket && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-[90%] max-w-md">
-            <h3 className="text-xl font-bold mb-4 text-center text-blue-800">
-              Asignar Técnico
-            </h3>
-            <p className="mb-2 text-sm text-gray-700">
-              <strong>Ticket:</strong> {selectedTicket.titulo}
-            </p>
-            <select
-              className="w-full p-2 border rounded mb-4"
-              value={asignacion}
-              onChange={(e) => setAsignacion(e.target.value)}
-            >
-              <option value="">Selecciona un técnico</option>
-              {tecnicos.map((tec) => (
-                <option key={tec.id} value={tec.id}>
-                  {tec.nombres}
-                </option>
-              ))}
-            </select>
-            <div className="flex justify-end gap-3">
-              <button
-                className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded"
-                onClick={cerrarModal}
-                disabled={loading}
+      {/* Modal de asignación */}
+      <Transition appear show={!!selectedTicket} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={cerrarModal}>
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-200"
+            enterFrom="opacity-0"
+            enterTo="opacity-30"
+            leave="ease-in duration-150"
+            leaveFrom="opacity-30"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black opacity-35" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-200"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-150"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
               >
-                Cancelar
-              </button>
-              <button
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded min-w-[100px] flex justify-center items-center"
-                onClick={handleAsignar}
-                disabled={loading}
-              >
-                {loading ? (
-                  <span className="loader border-white border-t-transparent border-2 w-4 h-4 rounded-full animate-spin"></span>
-                ) : (
-                  "Asignar"
-                )}
-              </button>
+                <Dialog.Panel className="w-full max-w-md bg-white rounded-lg p-6 shadow-lg">
+                  <Dialog.Title className="text-xl font-bold text-gray-900 mb-4 text-center">
+                    🚀 Asignar Técnico
+                  </Dialog.Title>
+                  <p className="text-gray-700 mb-2">
+                    <strong>Título:</strong> {selectedTicket?.titulo}
+                  </p>
+                  <p className="text-gray-700 mb-4">
+                    <strong>Descripción:</strong> {selectedTicket?.descripcion}
+                  </p>
+                  <select
+                    className="w-full border rounded px-3 py-2 mb-4 focus:outline-none focus:ring focus:border-blue-300"
+                    value={asignacion}
+                    onChange={(e) => setAsignacion(e.target.value)}
+                  >
+                    <option value="">Selecciona un técnico</option>
+                    {tecnicos.map((tec) => (
+                      <option key={tec.id} value={tec.id}>
+                        {tec.nombres}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="flex justify-end space-x-3">
+                    <button
+                      onClick={cerrarModal}
+                      disabled={loading}
+                      className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition disabled:opacity-50"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleAsignar}
+                      disabled={loading}
+                      className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center justify-center transition disabled:opacity-50"
+                    >
+                      {loading ? (
+                        <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        "Asignar"
+                      )}
+                    </button>
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
             </div>
           </div>
-        </div>
-      )}
+        </Dialog>
+      </Transition>
     </div>
   );
 }
