@@ -340,7 +340,15 @@ export default function UsuarioDashboard() {
                     className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
                   >
                     <td className="px-4 py-2 text-sm">{t.id}</td>
-                    <td className="px-4 py-2 text-sm">{t.titulo}</td>
+                    <td className="px-4 py-2 text-sm">
+                      <Link
+                        to={`/usuario/tickets/${t.id}`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {t.titulo}
+                      </Link>
+                    </td>
+
                     <td className="px-4 py-2">
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-semibold ${

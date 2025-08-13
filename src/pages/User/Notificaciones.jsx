@@ -124,7 +124,7 @@ export default function NotificacionesPage() {
                   <div className="text-gray-700 text-sm">{n.mensaje}</div>
                   {n.ticketId && (
                     <button
-                      onClick={() => navigate(`/tickets/${n.ticketId}`)}
+                      onClick={() => navigate(`/usuario/tickets/${n.ticketId}`)}
                       className="mt-2 text-blue-600 text-sm hover:underline"
                     >
                       Ver ticket #{n.ticketId}

@@ -1,4 +1,3 @@
-// src/pages/Tecnico/ActualizarEstado.jsx
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { API } from "../../api";
@@ -27,6 +26,11 @@ export default function ActualizarEstado() {
   const [success, setSuccess] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+  // ==== CHAT ====
+  const [mensajes, setMensajes] = useState([]);
+  const [nuevoMensaje, setNuevoMensaje] = useState("");
+  const [enviandoMsg, setEnviandoMsg] = useState(false);
+
   useEffect(() => {
     (async () => {
       try {
@@ -45,6 +49,35 @@ export default function ActualizarEstado() {
     })();
   }, [id, token]);
 
+  // Cargar hilo de mensajes
+  useEffect(() => {
+    if (!id) return;
+    (async () => {
+      try {
+        const r = await fetch(`${API}/tickets/${id}/respuestas`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (r.ok) {
+          const data = await r.json(); // [{id, autorNombre, autorRol, mensaje, fecha}]
+          setMensajes(data);
+        }
+      } catch (e) {
+        console.error("Error cargando respuestas:", e);
+      }
+    })();
+  }, [id, token]);
+
+  const recargarMensajes = async () => {
+    try {
+      const r = await fetch(`${API}/tickets/${id}/respuestas`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (r.ok) setMensajes(await r.json());
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleSave = async () => {
     setError("");
     setSuccess("");
@@ -61,6 +94,33 @@ export default function ActualizarEstado() {
       setError(e.message);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Enviar mensaje (pedir más detalles, conversar)
+  const handleEnviarMensaje = async () => {
+    if (!nuevoMensaje.trim()) return;
+    setError("");
+    setEnviandoMsg(true);
+    try {
+      const resp = await fetch(`${API}/tickets/responder`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ticketId: Number(id),
+          mensaje: nuevoMensaje.trim(),
+        }),
+      });
+      if (!resp.ok) throw new Error("No se pudo enviar el mensaje");
+      setNuevoMensaje("");
+      await recargarMensajes(); // refresca el hilo
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setEnviandoMsg(false);
     }
   };
 
@@ -128,12 +188,7 @@ export default function ActualizarEstado() {
                     Prioridad
                   </dt>
                   <dd className="mt-1">
-                    <span
-                      className="px-2 py-1 rounded-full text-xs font-semibold 
-                      {ticket.prioridad === 'ALTA' ? 'bg-red-100 text-red-800' :
-                        ticket.prioridad === 'MEDIA' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-green-100 text-green-800'}"
-                    >
+                    <span className="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">
                       {ticket.prioridad}
                     </span>
                   </dd>
@@ -149,10 +204,7 @@ export default function ActualizarEstado() {
                     Estado Actual
                   </dt>
                   <dd className="mt-1">
-                    <span
-                      className="px-2 py-1 rounded-full text-xs font-semibold 
-                      bg-yellow-100 text-yellow-800 uppercase"
-                    >
+                    <span className="px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 uppercase">
                       {ticket.estado.replace("_", " ")}
                     </span>
                   </dd>
@@ -170,7 +222,7 @@ export default function ActualizarEstado() {
           )}
         </section>
 
-        {/* Panel de actualización */}
+        {/* Panel derecho: actualizar estado + chat */}
         <aside className="lg:col-span-5 bg-white rounded-lg shadow p-6 flex flex-col">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
             Cambiar Estado
@@ -231,6 +283,57 @@ export default function ActualizarEstado() {
               {success}
             </div>
           )}
+
+          {/* ==== CHAT (simple) ==== */}
+          <div className="mt-8">
+            <div className="flex items-center mb-3">
+              <ChatBubbleLeftRightIcon className="h-6 w-6 text-blue-600 mr-2" />
+              <h3 className="text-lg font-semibold text-gray-800">Mensajes</h3>
+            </div>
+
+            {/* Lista */}
+            <div className="max-h-72 overflow-y-auto border rounded-lg p-3 space-y-3">
+              {mensajes.length === 0 ? (
+                <p className="text-sm text-gray-500">Aún no hay mensajes.</p>
+              ) : (
+                mensajes.map((m) => (
+                  <div key={m.id} className="bg-gray-50 rounded p-2">
+                    <div className="text-xs text-gray-500">
+                      {m.autorNombre} · {m.autorRol} ·{" "}
+                      {new Date(m.fecha).toLocaleString()}
+                    </div>
+                    <div className="text-sm text-gray-800 whitespace-pre-wrap mt-1">
+                      {m.mensaje}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Input */}
+            <div className="mt-3">
+              <label className="block text-sm text-gray-700 mb-1">
+                Escribe un mensaje para solicitar más detalles
+              </label>
+              <textarea
+                rows={3}
+                value={nuevoMensaje}
+                onChange={(e) => setNuevoMensaje(e.target.value)}
+                className="w-full border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Ej: ¿Puedes adjuntar una captura del error y los pasos para reproducirlo?"
+              />
+              <div className="flex justify-end mt-2">
+                <button
+                  onClick={handleEnviarMensaje}
+                  disabled={enviandoMsg || !nuevoMensaje.trim()}
+                  className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg disabled:opacity-50"
+                >
+                  <PaperAirplaneIcon className="h-4 w-4 mr-2" />
+                  {enviandoMsg ? "Enviando..." : "Enviar"}
+                </button>
+              </div>
+            </div>
+          </div>
         </aside>
       </main>
     </div>

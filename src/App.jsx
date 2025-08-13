@@ -1,4 +1,9 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import PrivateRoute from "./components/shared/PrivateRoute";
 import AdminRoute from "./components/shared/AdminRoute";
@@ -6,6 +11,7 @@ import AdminRoute from "./components/shared/AdminRoute";
 // Páginas públicas
 import LoginPage from "./pages/Auth/LoginPage";
 import NotificacionesPage from "./pages/User/Notificaciones";
+import TicketDetalle from "./pages/User/TicketDetalle";
 
 // Páginas compartidas por todos los roles autenticados
 import DashboardPage from "./pages/Dashboard/DashboardPage";
@@ -25,6 +31,7 @@ import ActualizarEstado from "./pages/Tecnico/ActualizarEstado";
 // Funcionalidades exclusivas del admin
 import RegisterPage from "./pages/Auth/RegisterPage";
 import AdminUsersPage from "./pages/Admin/AdminUsersPage";
+import EditarUsuario from "./pages/Admin/EditarUsuario";
 
 // Funcionalidades extra del usuario
 import TicketsPendientes from "./pages/Tickets/TicketsPendientes";
@@ -38,6 +45,8 @@ function App() {
         <Routes>
           {/* 🌐 Rutas públicas */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/" element={<Navigate to="/home" replace />} />
+          <Route path="" element={<Navigate to="/home" replace />} />
           <Route path="/home" element={<DashboardPage />} />
 
           {/* 🔐 Rutas protegidas */}
@@ -52,6 +61,7 @@ function App() {
               path="/usuario/tickets/nuevo"
               element={<NuevoTicketPage />}
             />
+            <Route path="/usuario/tickets/:id" element={<TicketDetalle />} />
             <Route
               path="/usuario/notificaciones"
               element={<NotificacionesPage />}
@@ -76,6 +86,7 @@ function App() {
               <Route path="/admin/register" element={<RegisterPage />} />
               <Route path="/admin/users" element={<AdminUsersPage />} />
               <Route path="/admin/asignar" element={<AsignarTicketPage />} />
+              <Route path="/admin/users/:id/edit" element={<EditarUsuario />} />
             </Route>
           </Route>
         </Routes>
