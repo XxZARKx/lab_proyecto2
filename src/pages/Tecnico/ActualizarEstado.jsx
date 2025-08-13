@@ -12,6 +12,8 @@ import {
   CheckCircleIcon,
   ArrowPathIcon,
   ChevronDownIcon,
+  ChatBubbleLeftRightIcon,
+  PaperAirplaneIcon,
 } from "@heroicons/react/24/solid";
 
 export default function ActualizarEstado() {
@@ -77,7 +79,7 @@ export default function ActualizarEstado() {
       {/* Breadcrumb */}
       <nav className="bg-gray-50 border-b">
         <div className="max-w-7xl mx-auto px-6 py-3 text-sm text-gray-600 flex items-center space-x-2">
-          <Link to="/" className="flex items-center hover:text-gray-800">
+          <Link to="/tecnico" className="flex items-center hover:text-gray-800">
             <HomeIcon className="h-5 w-5 mr-1" /> Inicio
           </Link>
           <ChevronRightIcon className="h-4 w-4" />

@@ -5,6 +5,7 @@ import AdminRoute from "./components/shared/AdminRoute";
 
 // Páginas públicas
 import LoginPage from "./pages/Auth/LoginPage";
+import NotificacionesPage from "./pages/User/Notificaciones";
 
 // Páginas compartidas por todos los roles autenticados
 import DashboardPage from "./pages/Dashboard/DashboardPage";
@@ -50,6 +51,10 @@ function App() {
             <Route
               path="/usuario/tickets/nuevo"
               element={<NuevoTicketPage />}
+            />
+            <Route
+              path="/usuario/notificaciones"
+              element={<NotificacionesPage />}
             />
             <Route path="/usuario/tickets" element={<TicketsPendientes />} />
             <Route path="/usuario/historial" element={<HistorialUsuario />} />

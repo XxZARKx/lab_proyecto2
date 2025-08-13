@@ -1,8 +1,8 @@
-// src/pages/UsuarioDashboard.jsx
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { API } from "../../api";
 import { useAuth } from "../../context/AuthContext";
+import { getUnreadCount } from "../../services/notificaciones";
 import {
   PlusIcon,
   TicketIcon,
@@ -13,6 +13,7 @@ import {
   ClockIcon,
   CheckCircleIcon,
   XCircleIcon,
+  MagnifyingGlassIcon,
 } from "@heroicons/react/24/solid";
 
 export default function UsuarioDashboard() {
@@ -24,6 +25,32 @@ export default function UsuarioDashboard() {
   const [filtered, setFiltered] = useState([]);
   const [query, setQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const count = await getUnreadCount(token);
+        if (mounted) setUnreadCount(count);
+      } catch {}
+    })();
+    // opcional: refrescar cada 30s
+    const iv = setInterval(async () => {
+      try {
+        const count = await getUnreadCount(token);
+        setUnreadCount(count);
+      } catch {}
+    }, 30000);
+    return () => {
+      mounted = false;
+      clearInterval(iv);
+    };
+  }, [token]);
+
+  // PAGINACIÓN
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     const fetchTickets = async () => {
@@ -33,8 +60,15 @@ export default function UsuarioDashboard() {
         });
         if (!res.ok) throw new Error();
         const data = await res.json();
-        setTickets(data);
-        setFiltered(data);
+
+        // Ordenar por fecha (más recientes primero)
+        const sorted = [...data].sort(
+          (a, b) => new Date(b.fechaCreacion) - new Date(a.fechaCreacion)
+        );
+
+        setTickets(sorted);
+        setFiltered(sorted);
+        setCurrentPage(1);
       } catch {
         // manejar error
       }
@@ -42,13 +76,34 @@ export default function UsuarioDashboard() {
     fetchTickets();
   }, [token]);
 
+  // Buscar por ID, título y descripción
   useEffect(() => {
-    setFiltered(
-      tickets.filter((t) =>
-        t.titulo.toLowerCase().includes(query.toLowerCase())
-      )
-    );
+    const q = query.trim().toLowerCase();
+    const next = q
+      ? tickets.filter(
+          (t) =>
+            t.titulo?.toLowerCase().includes(q) ||
+            t.descripcion?.toLowerCase().includes(q) ||
+            String(t.id).includes(q)
+        )
+      : tickets;
+
+    setFiltered(next);
+    setCurrentPage(1); // reset al cambiar filtro/búsqueda
   }, [query, tickets]);
+
+  // Derivados de paginación (sobre filtered)
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, filtered.length);
+  const pageItems = filtered.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    if (currentPage > pages) setCurrentPage(pages);
+  }, [filtered.length, pageSize, currentPage]);
+
+  const goTo = (p) => setCurrentPage(Math.min(Math.max(1, p), totalPages));
 
   const counts = {
     PENDIENTE: tickets.filter((t) => t.estado === "PENDIENTE").length,
@@ -140,7 +195,18 @@ export default function UsuarioDashboard() {
             <h1 className="text-2xl font-bold">Tablero de Usuario</h1>
           </div>
           <div className="flex items-center gap-4">
-            <BellIcon className="h-6 w-6 text-yellow-500" />
+            <button
+              onClick={() => navigate("/usuario/notificaciones")}
+              className="relative"
+              title="Ver notificaciones"
+            >
+              <BellIcon className="h-6 w-6 text-yellow-500" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] leading-none px-1.5 py-0.5 rounded-full">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </button>
             <span className="font-medium">Usuario</span>
             <button
               onClick={() => {
@@ -164,7 +230,7 @@ export default function UsuarioDashboard() {
           />
           <StatCard
             icon={<CheckCircleIcon />}
-            label="Completados"
+            label="Cerrados"
             value={counts.CERRADO}
             color="green"
           />
@@ -203,30 +269,45 @@ export default function UsuarioDashboard() {
           <div className="relative w-full sm:w-64">
             <input
               type="text"
-              placeholder="Buscar por título..."
+              placeholder="Buscar por ID, título o descripción…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <svg
-              className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1116.65 16.65z"
-              />
-            </svg>
+            <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           </div>
         </div>
 
         {/* Table */}
         <div className="p-6 overflow-x-auto">
+          {/* Controles de paginación arriba */}
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-sm text-gray-600">
+              Mostrando{" "}
+              <span className="font-semibold">
+                {filtered.length === 0 ? 0 : startIndex + 1}
+              </span>{" "}
+              a <span className="font-semibold">{endIndex}</span> de{" "}
+              <span className="font-semibold">{filtered.length}</span>{" "}
+              resultados
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">Por página:</label>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="border border-gray-300 rounded-md text-sm px-2 py-1 bg-white"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+          </div>
+
           <table className="min-w-full bg-white rounded-lg overflow-hidden">
             <thead className="bg-gray-100">
               <tr>
@@ -243,37 +324,7 @@ export default function UsuarioDashboard() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((t, idx) => (
-                <tr
-                  key={t.id}
-                  className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
-                >
-                  <td className="px-4 py-2 text-sm">{t.id}</td>
-                  <td className="px-4 py-2 text-sm">{t.titulo}</td>
-                  <td className="px-4 py-2">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        badgeClasses[t.estado]
-                      }`}
-                    >
-                      {t.estado.replace("_", " ")}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        badgeClasses[t.prioridad]
-                      }`}
-                    >
-                      {t.prioridad}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 text-sm text-gray-500">
-                    {new Date(t.fechaCreacion).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
+              {filtered.length === 0 ? (
                 <tr>
                   <td
                     colSpan="5"
@@ -282,9 +333,81 @@ export default function UsuarioDashboard() {
                     No se encontraron tickets.
                   </td>
                 </tr>
+              ) : (
+                pageItems.map((t, idx) => (
+                  <tr
+                    key={t.id}
+                    className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                  >
+                    <td className="px-4 py-2 text-sm">{t.id}</td>
+                    <td className="px-4 py-2 text-sm">{t.titulo}</td>
+                    <td className="px-4 py-2">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          badgeClasses[t.estado]
+                        }`}
+                      >
+                        {t.estado.replace("_", " ")}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          badgeClasses[t.prioridad]
+                        }`}
+                      >
+                        {t.prioridad}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-sm text-gray-500">
+                      {new Date(t.fechaCreacion).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
+
+          {/* Controles de paginación abajo */}
+          {filtered.length > 0 && (
+            <div className="mt-4 flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Página <span className="font-semibold">{currentPage}</span> de{" "}
+                <span className="font-semibold">{totalPages}</span>
+              </div>
+
+              <div className="inline-flex rounded-md shadow-sm">
+                <button
+                  onClick={() => goTo(1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-l-md bg-white hover:bg-gray-50 disabled:opacity-50"
+                >
+                  « Primera
+                </button>
+                <button
+                  onClick={() => goTo(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-sm border-t border-b border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
+                >
+                  ‹ Anterior
+                </button>
+                <button
+                  onClick={() => goTo(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 text-sm border-t border-b border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Siguiente ›
+                </button>
+                <button
+                  onClick={() => goTo(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-r-md bg-white hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Última »
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

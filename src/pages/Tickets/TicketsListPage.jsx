@@ -156,10 +156,10 @@ export default function TicketListPage() {
                       onChange={handleFilterChange}
                     >
                       <option value="">Todos</option>
-                      <option value="Pendiente">Pendiente</option>
-                      <option value="En proceso">En proceso</option>
-                      <option value="Completado">Completado</option>
-                      <option value="Anulado">Anulado</option>
+                      <option value="PENDIENTE">Pendiente</option>
+                      <option value="EN_PROCESO">En proceso</option>
+                      <option value="CERRADO">Cerrado</option>
+                      <option value="ANULADO">Anulado</option>
                     </select>
                   </div>
 
@@ -181,7 +181,6 @@ export default function TicketListPage() {
                       <option value="Baja">Baja</option>
                       <option value="Media">Media</option>
                       <option value="Alta">Alta</option>
-                      <option value="Urgente">Urgente</option>
                     </select>
                   </div>
 
@@ -353,10 +352,14 @@ export default function TicketListPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <TicketStatusBadge status={ticket.status} />
+                        <TicketStatusBadge
+                          status={String(ticket.status).toUpperCase()}
+                        />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <PriorityBadge priority={ticket.priority} />
+                        <PriorityBadge
+                          priority={String(ticket.priority).toUpperCase()}
+                        />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(ticket.createdAt).toLocaleDateString()}

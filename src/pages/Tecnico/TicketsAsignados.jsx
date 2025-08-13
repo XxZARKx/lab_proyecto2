@@ -8,7 +8,7 @@ export default function TicketsAsignados() {
   const [tickets, setTickets] = useState([]);
   const [counts, setCounts] = useState({
     pendiente: 0,
-    completado: 0,
+    cerrado: 0,
     anulado: 0,
   });
   const { token } = useAuth();
@@ -25,7 +25,7 @@ export default function TicketsAsignados() {
         setTickets(data);
         setCounts({
           pendiente: data.filter((t) => t.estado === "PENDIENTE").length,
-          completado: data.filter((t) => t.estado === "CERRADO").length,
+          cerrado: data.filter((t) => t.estado === "CERRADO").length,
           anulado: data.filter((t) => t.estado === "ANULADO").length,
         });
       } catch (err) {
@@ -60,8 +60,8 @@ export default function TicketsAsignados() {
           />
           <StatCard
             icon={<FileText className="text-green-500" />}
-            label="Completados"
-            value={counts.completado}
+            label="Cerrado"
+            value={counts.cerrado}
           />
           <StatCard
             icon={<Ban className="text-red-500" />}

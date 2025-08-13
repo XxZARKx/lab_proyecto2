@@ -1,3 +1,4 @@
+// src/pages/Usuario/NuevoTicketPage.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API } from "../../api";
@@ -11,8 +12,8 @@ import {
 export default function NuevoTicketPage() {
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
-  const [prioridad, setPrioridad] = useState("MEDIA");
-  const [categoria, setCategoria] = useState("Hardware");
+  const [prioridad, setPrioridad] = useState("MEDIA"); // ALTA | MEDIA | BAJA
+  const [categoria, setCategoria] = useState("HARDWARE"); // HARDWARE | SOFTWARE | REDES | CORREO | OTRO
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const { token } = useAuth();
@@ -22,17 +23,26 @@ export default function NuevoTicketPage() {
     setError("");
 
     try {
+      const payload = {
+        titulo,
+        descripcion,
+        prioridad, // enum Prioridad (ALTA/MEDIA/BAJA)
+        categoria: String(categoria).toUpperCase(), // enum TipoCategoria (HARDWARE/...)
+      };
+
       const resp = await fetch(`${API}/tickets`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ titulo, descripcion, prioridad, categoria }),
+        body: JSON.stringify(payload),
       });
+
       if (!resp.ok) throw new Error("Error al crear el ticket");
       navigate("/usuario");
-    } catch {
+    } catch (e) {
+      console.error(e);
       setError("Hubo un problema al registrar el ticket");
     }
   };
@@ -97,6 +107,7 @@ export default function NuevoTicketPage() {
 
             {/* Categoría & Prioridad */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Categoría (ENUM) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Categoría <span className="text-red-500">*</span>
@@ -105,14 +116,17 @@ export default function NuevoTicketPage() {
                   className="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2"
                   value={categoria}
                   onChange={(e) => setCategoria(e.target.value)}
+                  required
                 >
-                  <option>Hardware</option>
-                  <option>Software</option>
-                  <option>Redes</option>
-                  <option>Correo</option>
-                  <option>Otro</option>
+                  <option value="HARDWARE">Hardware</option>
+                  <option value="SOFTWARE">Software</option>
+                  <option value="REDES">Redes</option>
+                  <option value="CORREO">Correo</option>
+                  <option value="OTRO">Otro</option>
                 </select>
               </div>
+
+              {/* Prioridad (ENUM) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Prioridad <span className="text-red-500">*</span>
@@ -129,7 +143,7 @@ export default function NuevoTicketPage() {
               </div>
             </div>
 
-            {/* Adjuntos */}
+            {/* Adjuntos (placeholder) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Archivos Adjuntos
