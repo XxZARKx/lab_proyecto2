@@ -15,6 +15,7 @@ import {
   XCircleIcon,
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/solid";
+import { toLocalFromApi } from "../../utils/dates";
 
 export default function UsuarioDashboard() {
   const { token, logout } = useAuth();
@@ -368,7 +369,7 @@ export default function UsuarioDashboard() {
                       </span>
                     </td>
                     <td className="px-4 py-2 text-sm text-gray-500">
-                      {new Date(t.fechaCreacion).toLocaleDateString()}
+                      {toLocalFromApi(t.fechaCreacion)}
                     </td>
                   </tr>
                 ))

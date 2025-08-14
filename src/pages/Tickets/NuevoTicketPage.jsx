@@ -143,20 +143,6 @@ export default function NuevoTicketPage() {
               </div>
             </div>
 
-            {/* Adjuntos (placeholder) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Archivos Adjuntos
-              </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center text-gray-500 hover:border-blue-400 transition-colors cursor-pointer">
-                <PaperClipIcon className="h-8 w-8 mx-auto mb-2" />
-                <p className="text-sm">
-                  Haz clic para subir o arrastra y suelta <br />
-                  PNG, JPG, PDF hasta 10 MB
-                </p>
-              </div>
-            </div>
-
             {/* Botones */}
             <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
               <button

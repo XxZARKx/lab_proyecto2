@@ -160,18 +160,6 @@ export default function LoginPage() {
             </button>
           </div>
         </form>
-
-        <div className="text-center text-sm text-gray-600">
-          <p>
-            ¿Problemas para ingresar?{" "}
-            <a
-              href="#"
-              className="font-medium text-blue-600 hover:text-blue-500"
-            >
-              Contacta al administrador
-            </a>
-          </p>
-        </div>
       </div>
     </div>
   );

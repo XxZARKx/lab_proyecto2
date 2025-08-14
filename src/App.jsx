@@ -37,6 +37,7 @@ import EditarUsuario from "./pages/Admin/EditarUsuario";
 import TicketsPendientes from "./pages/Tickets/TicketsPendientes";
 import HistorialUsuario from "./pages/Tickets/HistorialUsuario";
 import AsignarTicketPage from "./pages/Admin/AsignarTicketPage";
+import AdminReportsPage from "./pages/Admin/AdminReportsPage";
 
 function App() {
   return (
@@ -87,6 +88,7 @@ function App() {
               <Route path="/admin/users" element={<AdminUsersPage />} />
               <Route path="/admin/asignar" element={<AsignarTicketPage />} />
               <Route path="/admin/users/:id/edit" element={<EditarUsuario />} />
+              <Route path="/admin/reportes" element={<AdminReportsPage />} />
             </Route>
           </Route>
         </Routes>

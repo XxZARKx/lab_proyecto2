@@ -15,6 +15,7 @@ import {
 } from "@heroicons/react/24/solid";
 import TicketStatusBadge from "../../components/shared/TicketStatusBadge";
 import { PriorityBadge } from "../../components/shared/PriorityBadge";
+import { toLocalFromApi } from "../../utils/dates";
 
 export default function DashboardTecnico() {
   const [tickets, setTickets] = useState([]);
@@ -253,7 +254,7 @@ export default function DashboardTecnico() {
                     <PriorityBadge priority={t.prioridad} />
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
-                    {new Date(t.fechaCreacion).toLocaleDateString()}
+                    {toLocalFromApi(t.fechaCreacion)}
                   </td>
                   <td className="px-6 py-4 text-sm">
                     <Link

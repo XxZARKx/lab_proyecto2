@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { API } from "../../api";
 import { useAuth } from "../../context/AuthContext";
 import { ESTADO } from "../../utils/tickets";
+import { toLocalFromApi } from "../../utils/dates";
 import {
   HomeIcon,
   UsersIcon,
@@ -115,6 +116,11 @@ export default function AdminDashboard() {
       to: "/admin/asignar",
       icon: <WrenchIcon className="w-5 h-5" />,
       label: "Asignar Tickets",
+    },
+    {
+      to: "/admin/reportes",
+      icon: <DocumentChartBarIcon className="w-5 h-5" />,
+      label: "Reporte de tickets",
     },
   ];
 
@@ -267,7 +273,7 @@ export default function AdminDashboard() {
                     <PriorityBadge priority={t.prioridad} />
                   </td>
                   <td className="px-4 py-2 text-sm text-gray-600">
-                    {new Date(t.fechaCreacion).toLocaleDateString()}
+                    {toLocalFromApi(t.fechaCreacion)}
                   </td>
                 </tr>
               ))}

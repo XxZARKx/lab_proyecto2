@@ -1,3 +1,4 @@
+// src/pages/Usuario/TicketDetalle.jsx
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { API } from "../../api";
@@ -7,9 +8,11 @@ import {
   PaperAirplaneIcon,
   ChatBubbleLeftRightIcon,
   CalendarDaysIcon,
+  WrenchScrewdriverIcon, // <- NUEVO
 } from "@heroicons/react/24/solid";
 import TicketStatusBadge from "../../components/shared/TicketStatusBadge";
 import { PriorityBadge } from "../../components/shared/PriorityBadge";
+import { toLocalFromApi } from "../../utils/dates";
 
 export default function TicketDetalle() {
   const { id } = useParams();
@@ -130,6 +133,11 @@ export default function TicketDetalle() {
     );
   }
 
+  const tecnicoNombre =
+    ticket?.tecnico?.nombres || ticket?.tecnicoNombre || null;
+  const tecnicoCorreo =
+    ticket?.tecnico?.correo || ticket?.tecnicoCorreo || null;
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -165,10 +173,26 @@ export default function TicketDetalle() {
                 {ticket.descripcion}
               </div>
             </div>
-            <div className="flex items-center gap-2 text-gray-600">
-              <CalendarDaysIcon className="h-5 w-5" />
-              Creado el {new Date(ticket.fechaCreacion).toLocaleString()}
+
+            {/* Técnico asignado */}
+            <div className="mt-2 flex items-center gap-2 text-gray-600">
+              <WrenchScrewdriverIcon className="h-5 w-5" />
+              <span className="text-gray-500 uppercase text-xs">
+                Técnico asignado:
+              </span>
+              <span className="font-medium">
+                {tecnicoNombre || "— No asignado —"}
+              </span>
             </div>
+            {tecnicoCorreo && (
+              <div className="ml-7 text-xs text-gray-500">{tecnicoCorreo}</div>
+            )}
+
+            <div className="flex items-center gap-2 text-gray-600 mt-3">
+              <CalendarDaysIcon className="h-5 w-5" />
+              Creado el {toLocalFromApi(ticket.fechaCreacion)}
+            </div>
+
             {ticket.categoria && (
               <div className="mt-2 text-gray-600">
                 <span className="text-gray-500 uppercase text-xs">
@@ -196,7 +220,7 @@ export default function TicketDetalle() {
             <h2 className="text-lg font-semibold text-gray-800">Mensajes</h2>
           </div>
 
-          {/* Caja scrolleable: altura fija para que aparezca el scroll */}
+          {/* Caja scrolleable */}
           <div
             ref={listRef}
             className="border rounded-lg p-3 space-y-3 overflow-y-auto max-h-[60vh] min-h-[40vh]"
@@ -209,8 +233,7 @@ export default function TicketDetalle() {
               mensajes.map((m) => (
                 <div key={m.id} className="max-w-[85%]">
                   <div className="text-[11px] text-gray-500">
-                    {m.autorNombre} · {m.autorRol} ·{" "}
-                    {new Date(m.fecha).toLocaleString()}
+                    {m.autorNombre} · {m.autorRol} · {toLocalFromApi(m.fecha)}
                   </div>
                   <div className="mt-1 bg-gray-50 rounded-lg p-2 text-sm whitespace-pre-wrap">
                     {m.mensaje}
