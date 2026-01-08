@@ -30,7 +30,7 @@ export default function LandingPage() {
       {/* Navbar */}
       <nav className="flex items-center justify-between px-8 py-4 bg-white shadow">
         <Link to="/" className="text-2xl font-bold text-blue-600">
-          HelpDeskX
+          HelpDesk
         </Link>
         <div className="space-x-4">
           <Link
@@ -43,20 +43,21 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <header className="flex-grow bg-gradient-to-r from-blue-50 to-blue-100 flex flex-col items-center justify-center text-center px-6">
-        <h1 className="text-4xl md:text-5xl font-extrabold text-gray-800 mb-4">
-          Simplifica la gestión de incidencias
+      <header className="bg-gradient-to-b from-blue-50 to-white py-20 lg:py-32 flex flex-col items-center justify-center text-center px-6">
+        <h1 className="text-4xl md:text-6xl font-extrabold text-gray-900 mb-6 tracking-tight">
+          Simplifica la gestión de{" "}
+          <span className="text-blue-600">incidencias</span>
         </h1>
-        <p className="text-lg text-gray-600 mb-8 max-w-xl">
+        <p className="text-lg md:text-xl text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
           Registra, asigna y da seguimiento a tus tickets de soporte de forma
-          rápida y organizada.
+          rápida, organizada y eficiente desde un solo lugar.
         </p>
         <div className="space-x-4">
           <Link
             to="/login"
-            className="px-6 py-3 border border-blue-600 text-blue-600 font-semibold rounded-lg hover:bg-blue-50 transition"
+            className="px-8 py-4 bg-blue-600 text-white font-bold rounded-full shadow-lg hover:bg-blue-700 hover:shadow-xl transition transform hover:-translate-y-1"
           >
-            Ya tengo cuenta
+            Iniciar Sesión
           </Link>
         </div>
       </header>
@@ -90,10 +91,30 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Contact / No Account Info */}
+      <section className="bg-blue-600 py-12">
+        <div className="max-w-4xl mx-auto px-6 text-center">
+          <h2 className="text-3xl font-bold text-white mb-4">
+            ¿Aún no tienes cuenta?
+          </h2>
+          <p className="text-blue-100 text-lg mb-8 max-w-2xl mx-auto">
+            El acceso a la plataforma es gestionado exclusivamente por el
+            departamento de TI. Si necesitas registrarte, por favor contacta al
+            equipo de soporte.
+          </p>
+          <a
+            href="mailto:soporte@helpdesk.com?subject=Solicitud de Acceso"
+            className="inline-block bg-white text-blue-600 font-semibold px-8 py-3 rounded-full hover:bg-blue-50 transition shadow-lg"
+          >
+            Contactar a Soporte
+          </a>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="bg-gray-800 text-gray-200 py-6">
         <div className="max-w-4xl mx-auto text-center space-y-2">
-          <p>© 2025 HelpDeskX. Todos los derechos reservados.</p>
+          <p>© 2025 HelpDesk. Todos los derechos reservados.</p>
           <div className="space-x-4">
             <Link to="#" className="hover:underline">
               Política de Privacidad
