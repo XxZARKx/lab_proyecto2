@@ -51,7 +51,7 @@ export default function RegisterPage() {
       }
 
       setSuccess(textResult);
-      setTimeout(() => navigate("/login"), 2000);
+      setTimeout(() => navigate("/"), 2000);
     } catch (err) {
       setError(err.message || "Error al registrar el usuario");
       setLoading(false);

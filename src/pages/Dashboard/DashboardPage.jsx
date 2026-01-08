@@ -39,12 +39,6 @@ export default function LandingPage() {
           >
             Iniciar sesión
           </Link>
-          <Link
-            to="/register"
-            className="px-4 py-2 font-medium text-white bg-blue-600 hover:bg-blue-700 rounded"
-          >
-            Registrarse
-          </Link>
         </div>
       </nav>
 
@@ -58,12 +52,6 @@ export default function LandingPage() {
           rápida y organizada.
         </p>
         <div className="space-x-4">
-          <Link
-            to="/register"
-            className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow hover:bg-blue-700 transition"
-          >
-            Crear cuenta
-          </Link>
           <Link
             to="/login"
             className="px-6 py-3 border border-blue-600 text-blue-600 font-semibold rounded-lg hover:bg-blue-50 transition"

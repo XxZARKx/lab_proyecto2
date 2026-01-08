@@ -54,20 +54,47 @@ export default function AsignarTicketPage() {
 
   const handleAsignar = async () => {
     if (!asignacion) return toast.warn("Selecciona un técnico");
-    setLoading(true);
+
+    // 1. Capturar datos actuales antes de limpiar estado
+    const ticketId = selectedTicket.id;
+    const tecnicoId = asignacion;
+    const previousTickets = [...tickets]; // Copia para rollback si falla
+
+    // 2. Actualización Optimista de la UI
+    // Quitamos el ticket de la lista inmediatamente
+    setTickets((t) => t.filter((x) => x.id !== ticketId));
+    // Cerramos el modal inmediatamente para que el usuario siga trabajando
+    cerrarModal();
+
+    // 3. Notificación de carga no bloqueante
+    const toastId = toast.loading("Procesando asignación...");
+
     try {
       const res = await fetch(
-        `${API}/tickets/${selectedTicket.id}/asignar?tecnicoId=${asignacion}`,
+        `${API}/tickets/${ticketId}/asignar?tecnicoId=${tecnicoId}`,
         { method: "PUT", headers: { Authorization: `Bearer ${token}` } }
       );
-      if (!res.ok) throw new Error();
-      toast.success("Ticket asignado correctamente");
-      setTickets((t) => t.filter((x) => x.id !== selectedTicket.id));
-      cerrarModal();
-    } catch {
-      toast.error("Error al asignar el ticket");
-    } finally {
-      setLoading(false);
+
+      if (!res.ok) throw new Error("Error en la respuesta del servidor");
+
+      // 4. Éxito: Actualizamos la notificación
+      toast.update(toastId, {
+        render: "Ticket asignado correctamente",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
+    } catch (error) {
+      console.error(error);
+      // 5. Error: Revertimos los cambios (Rollback)
+      setTickets(previousTickets);
+
+      toast.update(toastId, {
+        render: "Error al asignar. El ticket ha sido restaurado.",
+        type: "error",
+        isLoading: false,
+        autoClose: 5000,
+      });
     }
   };
 
