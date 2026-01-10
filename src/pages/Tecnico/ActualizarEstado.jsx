@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { API } from "../../api";
 import { useAuth } from "../../context/AuthContext";
@@ -25,6 +25,7 @@ export default function ActualizarEstado() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const chatRef = useRef(null);
 
   // ==== CHAT ====
   const [mensajes, setMensajes] = useState([]);
@@ -66,6 +67,19 @@ export default function ActualizarEstado() {
       }
     })();
   }, [id, token]);
+
+  // EFECTO: Baja el scroll automáticamente cuando llegan mensajes nuevos
+  useEffect(() => {
+    if (chatRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = chatRef.current;
+      // Verificamos si el usuario está cerca del final (o si apenas cargó)
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+
+      if (isNearBottom || mensajes.length <= 1) {
+        chatRef.current.scrollTop = chatRef.current.scrollHeight;
+      }
+    }
+  }, [mensajes]);
 
   const recargarMensajes = async () => {
     try {
@@ -300,7 +314,10 @@ export default function ActualizarEstado() {
             </div>
 
             {/* Lista */}
-            <div className="max-h-72 overflow-y-auto border rounded-lg p-3 space-y-3">
+            <div
+              ref={chatRef}
+              className="max-h-72 overflow-y-auto border rounded-lg p-3 space-y-3"
+            >
               {mensajes.length === 0 ? (
                 <p className="text-sm text-gray-500">Aún no hay mensajes.</p>
               ) : (
