@@ -42,7 +42,7 @@ export default function UsuarioDashboard() {
         const count = await getUnreadCount(token);
         setUnreadCount(count);
       } catch {}
-    }, 30000);
+    }, 5000);
     return () => {
       mounted = false;
       clearInterval(iv);
