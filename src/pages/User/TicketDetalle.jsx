@@ -1,7 +1,6 @@
 // src/pages/Usuario/TicketDetalle.jsx
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { toLocalFromApi } from "../../utils/dates";
 import { API } from "../../api";
 import { useAuth } from "../../context/AuthContext";
 import {
