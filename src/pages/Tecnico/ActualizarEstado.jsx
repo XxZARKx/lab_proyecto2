@@ -78,6 +78,14 @@ export default function ActualizarEstado() {
     }
   };
 
+  useEffect(() => {
+    const intervalo = setInterval(() => {
+      recargarMensajes();
+    }, 4000);
+
+    return () => clearInterval(intervalo);
+  }, [id, token]);
+
   const handleSave = async () => {
     setError("");
     setSuccess("");
