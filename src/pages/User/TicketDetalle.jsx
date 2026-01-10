@@ -1,6 +1,7 @@
 // src/pages/Usuario/TicketDetalle.jsx
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { toLocalFromApi } from "../../utils/dates";
 import { API } from "../../api";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -18,6 +19,7 @@ export default function TicketDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { token } = useAuth();
+  const { user } = useAuth();
 
   const [ticket, setTicket] = useState(null);
   const [mensajes, setMensajes] = useState([]);
@@ -223,54 +225,93 @@ export default function TicketDetalle() {
         </section>
 
         {/* Chat */}
-        <section className="lg:col-span-2 bg-white rounded-lg shadow p-5 flex flex-col">
-          <div className="flex items-center mb-3">
+        <section className="lg:col-span-2 bg-white rounded-lg shadow p-5 flex flex-col h-[600px]">
+          {" "}
+          {/* Altura fija ayuda al diseño */}
+          <div className="flex items-center mb-4 border-b pb-2">
             <ChatBubbleLeftRightIcon className="h-6 w-6 text-blue-600 mr-2" />
             <h2 className="text-lg font-semibold text-gray-800">Mensajes</h2>
           </div>
-
           {/* Caja scrolleable */}
           <div
             ref={listRef}
-            className="border rounded-lg p-3 space-y-3 overflow-y-auto max-h-[60vh] min-h-[40vh]"
+            className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 rounded-lg border border-gray-200"
           >
             {mensajes.length === 0 ? (
-              <p className="text-sm text-gray-500">
-                Aún no hay mensajes en este ticket.
-              </p>
+              <div className="flex items-center justify-center h-full text-gray-400 italic">
+                No hay mensajes. ¡Escribe el primero!
+              </div>
             ) : (
-              mensajes.map((m) => (
-                <div key={m.id} className="max-w-[85%]">
-                  <div className="text-[11px] text-gray-500">
-                    {m.autorNombre} · {m.autorRol} · {toLocalFromApi(m.fecha)}
+              mensajes.map((m) => {
+                // Verificamos si soy yo el autor
+                const isMe = user?.id === m.autorId;
+
+                return (
+                  <div
+                    key={m.id}
+                    className={`flex flex-col ${
+                      isMe ? "items-end" : "items-start"
+                    }`}
+                  >
+                    <div
+                      className={`max-w-[80%] px-4 py-3 rounded-2xl shadow-sm relative ${
+                        isMe
+                          ? "bg-blue-600 text-white rounded-tr-none" // Mis mensajes: Azul, sin borde sup-der
+                          : "bg-white text-gray-800 border border-gray-200 rounded-tl-none" // Otros: Blanco, sin borde sup-izq
+                      }`}
+                    >
+                      {/* Cabecera del mensaje */}
+                      <div
+                        className={`text-xs font-bold mb-1 ${
+                          isMe ? "text-blue-100" : "text-blue-600"
+                        }`}
+                      >
+                        {isMe ? "Tú" : m.autorNombre}
+                        <span
+                          className={`font-normal ml-2 opacity-75 ${
+                            isMe ? "text-blue-200" : "text-gray-400"
+                          }`}
+                        >
+                          • {m.autorRol}
+                        </span>
+                      </div>
+
+                      {/* Cuerpo del mensaje */}
+                      <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                        {m.mensaje}
+                      </p>
+
+                      {/* Hora */}
+                      <div
+                        className={`text-[10px] mt-2 text-right ${
+                          isMe ? "text-blue-200" : "text-gray-400"
+                        }`}
+                      >
+                        {toLocalFromApi(m.fecha)}
+                      </div>
+                    </div>
                   </div>
-                  <div className="mt-1 bg-gray-50 rounded-lg p-2 text-sm whitespace-pre-wrap">
-                    {m.mensaje}
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
-
-          <div className="mt-3">
-            <label className="block text-sm text-gray-700 mb-1">
-              Escribe tu respuesta o más detalles para ayudar al técnico
-            </label>
+          {/* Input Area (Se mantiene similar pero con mejor padding) */}
+          <div className="mt-4 pt-2 border-t">
+            {/* ... tu código del input ... */}
             <div className="flex gap-2">
               <textarea
-                rows={3}
+                rows={2} // Un poco más compacto
                 value={nuevoMensaje}
                 onChange={(e) => setNuevoMensaje(e.target.value)}
-                className="flex-1 border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Ej: el error aparece cuando abro el programa y presiono 'Iniciar'…"
+                className="flex-1 border border-gray-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 resize-none"
+                placeholder="Escribe un mensaje..."
               />
               <button
                 onClick={enviar}
                 disabled={sending || !nuevoMensaje.trim()}
-                className="self-end inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white h-[42px] px-4 rounded-lg disabled:opacity-50"
+                className="self-end inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white h-12 w-12 rounded-full shadow-md transition-transform active:scale-95 disabled:opacity-50 disabled:scale-100"
               >
-                <PaperAirplaneIcon className="h-4 w-4 mr-2" />
-                {sending ? "Enviando…" : "Enviar"}
+                <PaperAirplaneIcon className="h-5 w-5" />
               </button>
             </div>
           </div>
