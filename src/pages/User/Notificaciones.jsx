@@ -10,6 +10,7 @@ import {
   BellIcon,
   CheckCircleIcon,
   ClockIcon,
+  ArrowLeftIcon,
 } from "@heroicons/react/24/solid";
 
 export default function NotificacionesPage() {
@@ -61,13 +62,24 @@ export default function NotificacionesPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-3xl mx-auto bg-white rounded-xl shadow p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <BellIcon className="h-6 w-6 text-yellow-500" />
-            Notificaciones
-          </h1>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-700 flex items-center gap-2">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate(-1)}
+              className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition"
+              title="Volver atrás"
+            >
+              <ArrowLeftIcon className="h-6 w-6" />
+            </button>
+
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <BellIcon className="h-6 w-6 text-yellow-500" />
+              Notificaciones
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-2 self-end md:self-auto">
+            <label className="text-sm text-gray-700 flex items-center gap-2 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={onlyUnread}
@@ -75,69 +87,86 @@ export default function NotificacionesPage() {
                   setOnlyUnread(e.target.checked);
                   setPage(0);
                 }}
+                className="rounded text-blue-600 focus:ring-blue-500"
               />
               Solo no leídas
             </label>
             <button
-              className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition shadow-sm"
               onClick={handleMarkAll}
             >
-              Marcar todas como leídas
+              Marcar todas leídas
             </button>
           </div>
         </div>
 
-        {err && <div className="mb-3 text-red-600">{err}</div>}
+        {err && (
+          <div className="mb-3 text-red-600 bg-red-50 p-3 rounded">{err}</div>
+        )}
 
         {loading ? (
-          <div className="py-16 text-center text-gray-500">Cargando…</div>
+          <div className="py-16 text-center text-gray-500 flex flex-col items-center">
+            <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mb-2"></div>
+            Cargando...
+          </div>
         ) : items.length === 0 ? (
-          <div className="py-16 text-center text-gray-500">
-            No hay notificaciones.
+          <div className="py-16 text-center text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+            No tienes notificaciones {onlyUnread ? "sin leer" : ""}.
           </div>
         ) : (
           <ul className="divide-y divide-gray-200">
             {items.map((n) => (
               <li
                 key={n.id}
-                className="py-4 flex items-start justify-between gap-4"
+                className={`py-4 flex items-start justify-between gap-4 transition-colors ${
+                  !n.leida ? "bg-blue-50/30 -mx-2 px-2 rounded" : ""
+                }`}
               >
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
                     {!n.leida ? (
-                      <span className="inline-flex items-center text-xs px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full">
+                      <span className="inline-flex items-center text-[10px] uppercase font-bold px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
                         Nueva
                       </span>
-                    ) : (
-                      <span className="inline-flex items-center text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full">
-                        Leída
-                      </span>
-                    )}
-                    <span className="text-sm text-gray-500 flex items-center gap-1">
-                      <ClockIcon className="h-4 w-4" />
+                    ) : null}
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <ClockIcon className="h-3 w-3" />
                       {new Date(n.creadoEn).toLocaleString()}
                     </span>
                   </div>
-                  <div className="mt-1 font-medium text-gray-900">
+                  <div
+                    className={`text-base ${
+                      !n.leida
+                        ? "font-bold text-gray-900"
+                        : "font-medium text-gray-700"
+                    }`}
+                  >
                     {n.titulo}
                   </div>
-                  <div className="text-gray-700 text-sm">{n.mensaje}</div>
+                  <div className="text-gray-600 text-sm mt-1 leading-relaxed">
+                    {n.mensaje}
+                  </div>
+
                   {n.ticketId && (
                     <button
                       onClick={() => navigate(`/usuario/tickets/${n.ticketId}`)}
-                      className="mt-2 text-blue-600 text-sm hover:underline"
+                      className="mt-3 inline-flex items-center text-sm text-blue-600 hover:text-blue-800 font-medium group"
                     >
                       Ver ticket #{n.ticketId}
+                      <span className="ml-1 group-hover:translate-x-1 transition-transform">
+                        →
+                      </span>
                     </button>
                   )}
                 </div>
+
                 {!n.leida && (
                   <button
                     onClick={() => handleMarkAsRead(n.id)}
-                    className="self-center flex items-center gap-1 px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+                    className="flex-shrink-0 p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-full transition"
+                    title="Marcar como leída"
                   >
-                    <CheckCircleIcon className="h-4 w-4" />
-                    Marcar leída
+                    <CheckCircleIcon className="h-6 w-6" />
                   </button>
                 )}
               </li>
@@ -146,53 +175,59 @@ export default function NotificacionesPage() {
         )}
 
         {/* Paginación */}
-        <div className="mt-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Por página:</span>
-            <select
-              value={size}
-              onChange={(e) => {
-                setSize(Number(e.target.value));
-                setPage(0);
-              }}
-              className="border border-gray-300 rounded-md text-sm px-2 py-1 bg-white"
-            >
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-            </select>
+        {items.length > 0 && (
+          <div className="mt-6 pt-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">Mostrar:</span>
+              <select
+                value={size}
+                onChange={(e) => {
+                  setSize(Number(e.target.value));
+                  setPage(0);
+                }}
+                className="border border-gray-300 rounded-md text-sm px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(0)}
+                disabled={page === 0}
+                className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                « Inicio
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ‹ Ant
+              </button>
+              <span className="text-sm text-gray-600 px-2">
+                Página {page + 1} de {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={page >= totalPages - 1}
+                className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Sig ›
+              </button>
+              <button
+                onClick={() => setPage(totalPages - 1)}
+                disabled={page >= totalPages - 1}
+                className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Fin »
+              </button>
+            </div>
           </div>
-          <div className="inline-flex rounded-md shadow-sm">
-            <button
-              onClick={() => setPage(0)}
-              disabled={page === 0}
-              className="px-3 py-1.5 text-sm border border-gray-300 rounded-l-md bg-white hover:bg-gray-50 disabled:opacity-50"
-            >
-              « Primera
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
-              className="px-3 py-1.5 text-sm border-t border-b border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
-            >
-              ‹ Anterior
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={page >= totalPages - 1}
-              className="px-3 py-1.5 text-sm border-t border-b border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
-            >
-              Siguiente ›
-            </button>
-            <button
-              onClick={() => setPage(totalPages - 1)}
-              disabled={page >= totalPages - 1}
-              className="px-3 py-1.5 text-sm border border-gray-300 rounded-r-md bg-white hover:bg-gray-50 disabled:opacity-50"
-            >
-              Última »
-            </button>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
