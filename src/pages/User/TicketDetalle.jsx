@@ -72,6 +72,7 @@ export default function TicketDetalle() {
   }, [mensajes]);
 
   // Refetch hilo
+  // 1. La función se queda sola, limpia
   const recargarMensajes = async () => {
     try {
       const r = await fetch(`${API}/tickets/${id}/respuestas`, {
@@ -82,6 +83,14 @@ export default function TicketDetalle() {
       }
     } catch {}
   };
+
+  useEffect(() => {
+    const intervalo = setInterval(() => {
+      recargarMensajes();
+    }, 4000);
+
+    return () => clearInterval(intervalo);
+  }, [id, token]);
 
   const enviar = async () => {
     if (!nuevoMensaje.trim()) return;
