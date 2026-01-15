@@ -2,30 +2,25 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { API } from "../../api";
 import { useAuth } from "../../context/AuthContext";
-import { ESTADO } from "../../utils/tickets";
 import { toLocalFromApi } from "../../utils/dates";
 import {
   HomeIcon,
   UsersIcon,
   WrenchIcon,
   UserIcon,
-  ArrowRightOnRectangleIcon,
-  ClockIcon,
-  CheckCircleIcon,
-  XCircleIcon,
   DocumentChartBarIcon,
+  ArrowRightOnRectangleIcon,
   MagnifyingGlassIcon,
+  EyeIcon,
 } from "@heroicons/react/24/solid";
 import TicketStatusBadge from "../../components/shared/TicketStatusBadge";
 import { PriorityBadge } from "../../components/shared/PriorityBadge";
+// 1. IMPORTAR EL NUEVO COMPONENTE
+import StatusSummaryGrid from "./StatusSummaryGrid";
 
 export default function AdminDashboard() {
   const [tickets, setTickets] = useState([]);
-  const [counts, setCounts] = useState({
-    pendiente: 0,
-    cerrado: 0,
-    anulado: 0,
-  });
+  // Eliminamos el estado 'counts' ya que el componente lo calcula solo
 
   // BUSCADOR
   const [query, setQuery] = useState("");
@@ -36,12 +31,11 @@ export default function AdminDashboard() {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, token } = useAuth(); // Usamos el token del contexto
 
   useEffect(() => {
     (async () => {
       try {
-        const token = localStorage.getItem("authToken");
         const res = await fetch(`${API}/tickets/reporte`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -52,18 +46,14 @@ export default function AdminDashboard() {
           (a, b) => new Date(b.fechaCreacion) - new Date(a.fechaCreacion)
         );
         setTickets(sorted);
-        setCounts({
-          pendiente: data.filter((t) => t.estado === ESTADO.PENDIENTE).length,
-          cerrado: data.filter((t) => t.estado === ESTADO.CERRADO).length,
-          anulado: data.filter((t) => t.estado === ESTADO.ANULADO).length,
-        });
+        // Ya no necesitamos calcular 'counts' manualmente aquí
 
         setCurrentPage(1);
       } catch (err) {
         console.error("Error al obtener tickets:", err);
       }
     })();
-  }, []);
+  }, [token]);
 
   // FILTRADO por query (título, descripción, id)
   const q = query.trim().toLowerCase();
@@ -164,30 +154,12 @@ export default function AdminDashboard() {
           </button>
         </header>
 
-        {/* Estadísticas */}
+        {/* 2. SECCIÓN DE ESTADÍSTICAS DINÁMICA */}
         <section className="p-6 bg-white border-b border-gray-200">
-          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
-            <StatCard
-              icon={<ClockIcon className="w-6 h-6 text-yellow-500" />}
-              label="Pendientes"
-              value={counts.pendiente}
-            />
-            <StatCard
-              icon={<CheckCircleIcon className="w-6 h-6 text-green-600" />}
-              label="Cerrados"
-              value={counts.cerrado}
-            />
-            <StatCard
-              icon={<XCircleIcon className="w-6 h-6 text-red-600" />}
-              label="Anulados"
-              value={counts.anulado}
-            />
-            <StatCard
-              icon={<DocumentChartBarIcon className="w-6 h-6 text-gray-700" />}
-              label="Total"
-              value={tickets.length}
-            />
-          </div>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">
+            Resumen Global
+          </h3>
+          <StatusSummaryGrid tickets={tickets} />
         </section>
 
         {/* Tabla */}
@@ -233,7 +205,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <table className="min-w-full bg-white rounded-lg overflow-hidden">
+          <table className="min-w-full bg-white rounded-lg overflow-hidden shadow-sm">
             <thead className="bg-gray-50 sticky top-0">
               <tr>
                 {[
@@ -243,6 +215,7 @@ export default function AdminDashboard() {
                   "Estado",
                   "Prioridad",
                   "Fecha",
+                  "Acciones",
                 ].map((h) => (
                   <th
                     key={h}
@@ -257,23 +230,47 @@ export default function AdminDashboard() {
               {pageItems.map((t, i) => (
                 <tr
                   key={t.id}
-                  className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                  className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}
                 >
-                  <td className="px-4 py-2 text-sm text-gray-700">{t.id}</td>
-                  <td className="px-4 py-2 text-sm text-gray-800">
-                    {t.titulo}
+                  {/* ENLACE EN EL ID */}
+                  <td className="px-4 py-3 text-sm text-blue-600 font-medium">
+                    <Link to={`/tickets/${t.id}`} className="hover:underline">
+                      #{t.id}
+                    </Link>
                   </td>
-                  <td className="px-4 py-2 text-sm text-gray-600 line-clamp-1">
+
+                  {/* ENLACE EN EL TÍTULO */}
+                  <td className="px-4 py-3 text-sm text-gray-800">
+                    <Link
+                      to={`/tickets/${t.id}`}
+                      className="hover:text-blue-600 font-medium"
+                    >
+                      {t.titulo}
+                    </Link>
+                  </td>
+
+                  <td className="px-4 py-3 text-sm text-gray-600 line-clamp-1 max-w-[200px] truncate">
                     {t.descripcion}
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-3">
                     <TicketStatusBadge status={t.estado} />
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-3">
                     <PriorityBadge priority={t.prioridad} />
                   </td>
-                  <td className="px-4 py-2 text-sm text-gray-600">
+                  <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
                     {toLocalFromApi(t.fechaCreacion)}
+                  </td>
+
+                  {/* BOTÓN VER DETALLE */}
+                  <td className="px-4 py-3 text-sm">
+                    <Link
+                      to={`/tickets/${t.id}`}
+                      className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded transition"
+                    >
+                      <EyeIcon className="h-4 w-4" />
+                      Ver
+                    </Link>
                   </td>
                 </tr>
               ))}
@@ -281,7 +278,7 @@ export default function AdminDashboard() {
               {pageItems.length === 0 && (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-4 py-8 text-center text-gray-500 text-sm"
                   >
                     No hay tickets para mostrar.
@@ -331,18 +328,6 @@ export default function AdminDashboard() {
           </div>
         </section>
       </main>
-    </div>
-  );
-}
-
-function StatCard({ icon, label, value }) {
-  return (
-    <div className="flex items-center p-4 bg-gray-50 rounded-lg shadow-sm">
-      <div className="p-3 bg-white rounded-full">{icon}</div>
-      <div className="ml-4">
-        <p className="text-sm text-gray-500">{label}</p>
-        <p className="mt-1 text-2xl font-semibold text-gray-800">{value}</p>
-      </div>
     </div>
   );
 }

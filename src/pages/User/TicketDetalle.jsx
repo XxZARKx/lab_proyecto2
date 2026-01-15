@@ -1,14 +1,19 @@
-// src/pages/Usuario/TicketDetalle.jsx
+// src/pages/User/TicketDetalle.jsx
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { API } from "../../api";
 import { useAuth } from "../../context/AuthContext";
+import toast from "react-hot-toast";
 import {
   ArrowLeftIcon,
   PaperAirplaneIcon,
   ChatBubbleLeftRightIcon,
   CalendarDaysIcon,
-  WrenchScrewdriverIcon, // <- NUEVO
+  WrenchScrewdriverIcon,
+  ArrowDownCircleIcon,
+  UserPlusIcon,
+  TagIcon,
+  LockClosedIcon, // <--- 1. IMPORTAMOS EL CANDADO
 } from "@heroicons/react/24/solid";
 import TicketStatusBadge from "../../components/shared/TicketStatusBadge";
 import { PriorityBadge } from "../../components/shared/PriorityBadge";
@@ -17,8 +22,7 @@ import { toLocalFromApi } from "../../utils/dates";
 export default function TicketDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { token } = useAuth();
-  const { user } = useAuth();
+  const { token, user } = useAuth();
 
   const [ticket, setTicket] = useState(null);
   const [mensajes, setMensajes] = useState([]);
@@ -27,53 +31,91 @@ export default function TicketDetalle() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
 
-  // Contenedor scrolleable del chat
-  const listRef = useRef(null);
+  // Estados para Admin (Gestión)
+  const [tecnicos, setTecnicos] = useState([]);
+  const [selectedTecnico, setSelectedTecnico] = useState("");
+  const [newStatus, setNewStatus] = useState("");
+  const [processing, setProcessing] = useState(false);
 
+  // --- LÓGICA DE CHAT INTELIGENTE ---
+  const listRef = useRef(null);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
+
+  // Roles y Estado
+  const isAdmin = user?.rol === "ADMINISTRADOR";
+  // 2. Variable para saber si está cerrado
+  const isClosed = ticket?.estado === "CERRADO" || ticket?.estado === "ANULADO";
+
+  // 1. Función para bajar al final
   const scrollToBottom = () => {
-    requestAnimationFrame(() => {
-      if (listRef.current) {
-        listRef.current.scrollTop = listRef.current.scrollHeight;
-      }
-    });
+    if (listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+      setShowScrollBtn(false);
+    }
   };
 
-  // Carga el ticket (desde historial del usuario) y el hilo
+  // 2. Detectar scroll
+  const handleScroll = () => {
+    if (listRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = listRef.current;
+      const distanceToBottom = scrollHeight - scrollTop - clientHeight;
+      setShowScrollBtn(distanceToBottom > 100);
+    }
+  };
+
+  // 3. Efecto inteligente scroll
+  useEffect(() => {
+    if (listRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = listRef.current;
+      const distanceToBottom = scrollHeight - scrollTop - clientHeight;
+      const isNearBottom = distanceToBottom < 150;
+
+      if (isNearBottom || mensajes.length <= 1) {
+        scrollToBottom();
+      } else {
+        setShowScrollBtn(true);
+      }
+    }
+  }, [mensajes]);
+
+  // --- CARGA DE DATOS ---
   useEffect(() => {
     (async () => {
       setLoading(true);
       setError("");
       try {
-        const r1 = await fetch(`${API}/tickets/historial`, {
+        const res = await fetch(`${API}/tickets/historial`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!r1.ok) throw new Error("No se pudo cargar el ticket");
-        const all = await r1.json();
+        if (!res.ok) throw new Error("No se pudo cargar el ticket");
+        const all = await res.json();
         const t = all.find((x) => x.id === Number(id));
         if (!t) throw new Error("Ticket no encontrado o sin acceso");
+
         setTicket(t);
+        if (t.tecnico) setSelectedTecnico(t.tecnico.id);
+        setNewStatus(t.estado);
 
         const r2 = await fetch(`${API}/tickets/${id}/respuestas`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!r2.ok) throw new Error("No se pudo cargar el hilo de mensajes");
-        const msgs = await r2.json();
-        setMensajes(msgs);
+        if (r2.ok) setMensajes(await r2.json());
+
+        if (isAdmin) {
+          const r3 = await fetch(`${API}/usuarios/tecnicos`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (r3.ok) setTecnicos(await r3.json());
+        }
       } catch (e) {
         setError(e.message);
       } finally {
         setLoading(false);
       }
     })();
-  }, [id, token]);
+  }, [id, token, isAdmin]);
 
-  // Baja automáticamente al último mensaje cuando se actualiza la lista
-  useEffect(() => {
-    scrollToBottom();
-  }, [mensajes]);
-
-  // Refetch hilo
-  // 1. La función se queda sola, limpia
+  // Polling
   const recargarMensajes = async () => {
     try {
       const r = await fetch(`${API}/tickets/${id}/respuestas`, {
@@ -86,17 +128,14 @@ export default function TicketDetalle() {
   };
 
   useEffect(() => {
-    const intervalo = setInterval(() => {
-      recargarMensajes();
-    }, 4000);
-
+    const intervalo = setInterval(recargarMensajes, 4000);
     return () => clearInterval(intervalo);
   }, [id, token]);
 
+  // Enviar mensaje
   const enviar = async () => {
     if (!nuevoMensaje.trim()) return;
     setSending(true);
-    setError("");
     try {
       const resp = await fetch(`${API}/tickets/responder`, {
         method: "POST",
@@ -109,39 +148,81 @@ export default function TicketDetalle() {
           mensaje: nuevoMensaje.trim(),
         }),
       });
-      if (!resp.ok) throw new Error("No se pudo enviar el mensaje");
+      if (!resp.ok) throw new Error("Error al enviar");
       setNuevoMensaje("");
       await recargarMensajes();
     } catch (e) {
-      setError(e.message || "Error al enviar");
+      toast.error("No se pudo enviar el mensaje");
     } finally {
       setSending(false);
     }
   };
 
-  if (loading) {
+  // --- FUNCIONES ADMIN ---
+  const handleAsignar = async () => {
+    if (!selectedTecnico) return toast.error("Selecciona un técnico");
+    setProcessing(true);
+    const toastId = toast.loading("Asignando...");
+    try {
+      const res = await fetch(
+        `${API}/tickets/${id}/asignar?tecnicoId=${selectedTecnico}`,
+        { method: "PUT", headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) throw new Error("Error");
+      toast.success("Asignado correctamente", { id: toastId });
+      const tec = tecnicos.find((t) => t.id == selectedTecnico);
+      setTicket((prev) => ({
+        ...prev,
+        tecnico: tec,
+        estado: prev.estado === "PENDIENTE" ? "ASIGNADO" : prev.estado,
+      }));
+      setNewStatus((prev) => (prev === "PENDIENTE" ? "ASIGNADO" : prev));
+    } catch (error) {
+      toast.error("Error al asignar técnico", { id: toastId });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleChangeStatus = async () => {
+    if (newStatus === ticket.estado) return;
+    setProcessing(true);
+    const toastId = toast.loading("Actualizando estado...");
+    try {
+      const res = await fetch(
+        `${API}/tickets/${id}/estado?estado=${newStatus}`,
+        { method: "PUT", headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) throw new Error("Error");
+      toast.success("Estado actualizado", { id: toastId });
+      setTicket((prev) => ({ ...prev, estado: newStatus }));
+    } catch (error) {
+      toast.error("Error al cambiar estado", { id: toastId });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin h-10 w-10 rounded-full border-4 border-blue-500 border-t-transparent" />
       </div>
     );
-  }
-
-  if (error) {
+  if (error)
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white shadow rounded-lg p-6 text-center">
-          <p className="text-red-600 font-medium">{error}</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
           <button
             onClick={() => navigate(-1)}
-            className="mt-4 inline-flex items-center px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+            className="px-4 py-2 bg-gray-200 rounded"
           >
-            <ArrowLeftIcon className="h-5 w-5 mr-2" /> Volver
+            Volver
           </button>
         </div>
       </div>
     );
-  }
 
   const tecnicoNombre =
     ticket?.tecnico?.nombres || ticket?.tecnicoNombre || null;
@@ -151,100 +232,197 @@ export default function TicketDetalle() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+      <div className="bg-white border-b sticky top-0 z-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate(-1)}
-              className="p-2 rounded hover:bg-gray-100"
+              className="p-2 rounded hover:bg-gray-100 transition"
             >
               <ArrowLeftIcon className="h-5 w-5 text-gray-700" />
             </button>
-            <h1 className="text-xl font-semibold text-gray-800">
-              Ticket #{ticket.id} — {ticket.titulo}
+            <h1 className="text-xl font-semibold text-gray-800 truncate max-w-md">
+              Ticket #{ticket.id}{" "}
+              <span className="text-gray-400 font-normal mx-2">|</span>{" "}
+              {ticket.titulo}
             </h1>
           </div>
           <div className="flex items-center gap-2">
+            {/* 3. Badge CERRADO */}
+            {isClosed && (
+              <span className="hidden sm:flex bg-red-100 text-red-800 text-xs font-bold px-3 py-1 rounded-full items-center border border-red-200 mr-2">
+                <LockClosedIcon className="w-3 h-3 mr-1" /> CERRADO
+              </span>
+            )}
             <TicketStatusBadge status={ticket.estado} />
             <PriorityBadge priority={ticket.prioridad} />
           </div>
         </div>
       </div>
 
-      {/* Body */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Detalle */}
-        <section className="lg:col-span-1 bg-white rounded-lg shadow p-5 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-800">Resumen</h2>
-          <div className="text-sm text-gray-700">
-            <div className="mb-3">
-              <div className="text-gray-500 uppercase text-xs">Descripción</div>
-              <div className="mt-1 whitespace-pre-wrap">
-                {ticket.descripcion}
+      <main className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* COLUMNA IZQUIERDA */}
+        <section className="lg:col-span-1 space-y-6">
+          <div className="bg-white rounded-lg shadow p-5">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">
+              Detalles
+            </h2>
+            <div className="text-sm text-gray-700 space-y-4">
+              <div>
+                <div className="text-gray-500 uppercase text-xs font-bold mb-1">
+                  Descripción
+                </div>
+                <div className="whitespace-pre-wrap leading-relaxed text-gray-600">
+                  {ticket.descripcion}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-gray-500 uppercase text-xs font-bold block mb-1">
+                    Categoría
+                  </span>
+                  <span className="bg-gray-100 px-2 py-1 rounded text-gray-700 font-medium">
+                    {ticket.categoria || "General"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500 uppercase text-xs font-bold block mb-1">
+                    Fecha
+                  </span>
+                  <span className="flex items-center gap-1 text-gray-700">
+                    <CalendarDaysIcon className="h-4 w-4 text-gray-400" />
+                    {toLocalFromApi(ticket.fechaCreacion)}
+                  </span>
+                </div>
               </div>
             </div>
-
-            {/* Técnico asignado */}
-            <div className="mt-2 flex items-center gap-2 text-gray-600">
-              <WrenchScrewdriverIcon className="h-5 w-5" />
-              <span className="text-gray-500 uppercase text-xs">
-                Técnico asignado:
-              </span>
-              <span className="font-medium">
-                {tecnicoNombre || "— No asignado —"}
-              </span>
+            <div className="pt-4 mt-4 border-t">
+              <Link
+                to="/usuario/historial"
+                className="text-blue-600 hover:underline text-sm font-medium"
+              >
+                Ver historial completo
+              </Link>
             </div>
-            {tecnicoCorreo && (
-              <div className="ml-7 text-xs text-gray-500">{tecnicoCorreo}</div>
-            )}
-
-            <div className="flex items-center gap-2 text-gray-600 mt-3">
-              <CalendarDaysIcon className="h-5 w-5" />
-              Creado el {toLocalFromApi(ticket.fechaCreacion)}
-            </div>
-
-            {ticket.categoria && (
-              <div className="mt-2 text-gray-600">
-                <span className="text-gray-500 uppercase text-xs">
-                  Categoría:{" "}
-                </span>
-                <span className="font-medium">{ticket.categoria}</span>
-              </div>
-            )}
           </div>
 
-          <div className="pt-4 border-t">
-            <Link
-              to="/usuario/historial"
-              className="inline-block text-blue-600 hover:underline text-sm"
-            >
-              Ver mi historial completo
-            </Link>
+          <div className="bg-white rounded-lg shadow p-5">
+            <div className="flex items-center gap-2 mb-4 border-b pb-2">
+              <WrenchScrewdriverIcon className="h-5 w-5 text-blue-600" />
+              <h2 className="text-lg font-semibold text-gray-800">
+                {isAdmin ? "Gestión" : "Técnico"}
+              </h2>
+            </div>
+
+            {isAdmin ? (
+              <div className="space-y-5">
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase block mb-1">
+                    Asignar Técnico
+                  </label>
+                  <div className="flex gap-2">
+                    <select
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                      value={selectedTecnico}
+                      onChange={(e) => setSelectedTecnico(e.target.value)}
+                      disabled={processing}
+                    >
+                      <option value="">-- Seleccionar --</option>
+                      {tecnicos.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nombres}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={handleAsignar}
+                      disabled={processing || !selectedTecnico}
+                      className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition disabled:opacity-50 shadow-sm"
+                    >
+                      <UserPlusIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                  {tecnicoNombre && (
+                    <p className="text-xs text-green-600 mt-2 bg-green-50 p-2 rounded border border-green-100">
+                      Actual: <strong>{tecnicoNombre}</strong>
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase block mb-1">
+                    Forzar Estado
+                  </label>
+                  <div className="flex gap-2">
+                    <select
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                      value={newStatus}
+                      onChange={(e) => setNewStatus(e.target.value)}
+                      disabled={processing}
+                    >
+                      {[
+                        "PENDIENTE",
+                        "ASIGNADO",
+                        "EN_PROCESO",
+                        "CERRADO",
+                        "ANULADO",
+                      ].map((s) => (
+                        <option key={s} value={s}>
+                          {s.replace("_", " ")}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={handleChangeStatus}
+                      disabled={processing || newStatus === ticket.estado}
+                      className="bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-lg transition disabled:opacity-50 shadow-sm"
+                    >
+                      <TagIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-3">
+                <div className="bg-blue-50 p-2 rounded-full flex-shrink-0">
+                  <WrenchScrewdriverIcon className="h-6 w-6 text-blue-500" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">
+                    {tecnicoNombre || "Sin asignar"}
+                  </p>
+                  {tecnicoCorreo && (
+                    <p className="text-xs text-gray-500">{tecnicoCorreo}</p>
+                  )}
+                  {!tecnicoNombre && (
+                    <p className="text-xs text-yellow-600 mt-1 bg-yellow-50 px-2 py-0.5 rounded border border-yellow-100 inline-block">
+                      Esperando asignación...
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </section>
 
-        {/* Chat */}
-        <section className="lg:col-span-2 bg-white rounded-lg shadow p-5 flex flex-col h-[600px]">
-          {" "}
-          {/* Altura fija ayuda al diseño */}
+        {/* COLUMNA DERECHA: Chat */}
+        <section className="lg:col-span-2 bg-white rounded-lg shadow p-5 flex flex-col h-[600px] relative">
           <div className="flex items-center mb-4 border-b pb-2">
             <ChatBubbleLeftRightIcon className="h-6 w-6 text-blue-600 mr-2" />
             <h2 className="text-lg font-semibold text-gray-800">Mensajes</h2>
           </div>
-          {/* Caja scrolleable */}
+
           <div
             ref={listRef}
-            className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 rounded-lg border border-gray-200"
+            onScroll={handleScroll}
+            className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 rounded-lg border border-gray-200 scroll-smooth"
           >
             {mensajes.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-gray-400 italic">
-                No hay mensajes. ¡Escribe el primero!
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 italic">
+                <p>No hay mensajes aún.</p>
               </div>
             ) : (
               mensajes.map((m) => {
-                // Verificamos si soy yo el autor
                 const isMe = user?.id === m.autorId;
-
                 return (
                   <div
                     key={m.id}
@@ -253,36 +431,31 @@ export default function TicketDetalle() {
                     }`}
                   >
                     <div
-                      className={`max-w-[80%] px-4 py-3 rounded-2xl shadow-sm relative ${
+                      className={`max-w-[85%] px-4 py-3 rounded-2xl shadow-sm relative ${
                         isMe
-                          ? "bg-blue-600 text-white rounded-tr-none" // Mis mensajes: Azul, sin borde sup-der
-                          : "bg-white text-gray-800 border border-gray-200 rounded-tl-none" // Otros: Blanco, sin borde sup-izq
+                          ? "bg-blue-600 text-white rounded-tr-none"
+                          : "bg-white text-gray-800 border border-gray-200 rounded-tl-none"
                       }`}
                     >
-                      {/* Cabecera del mensaje */}
                       <div
-                        className={`text-xs font-bold mb-1 ${
+                        className={`text-xs font-bold mb-1 flex items-center gap-2 ${
                           isMe ? "text-blue-100" : "text-blue-600"
                         }`}
                       >
-                        {isMe ? "Tú" : m.autorNombre}
+                        <span>{isMe ? "Tú" : m.autorNombre}</span>
                         <span
-                          className={`font-normal ml-2 opacity-75 ${
+                          className={`font-normal text-[10px] uppercase opacity-75 ${
                             isMe ? "text-blue-200" : "text-gray-400"
                           }`}
                         >
                           • {m.autorRol}
                         </span>
                       </div>
-
-                      {/* Cuerpo del mensaje */}
                       <p className="whitespace-pre-wrap text-sm leading-relaxed">
                         {m.mensaje}
                       </p>
-
-                      {/* Hora */}
                       <div
-                        className={`text-[10px] mt-2 text-right ${
+                        className={`text-[10px] mt-1 text-right ${
                           isMe ? "text-blue-200" : "text-gray-400"
                         }`}
                       >
@@ -294,21 +467,42 @@ export default function TicketDetalle() {
               })
             )}
           </div>
-          {/* Input Area (Se mantiene similar pero con mejor padding) */}
-          <div className="mt-4 pt-2 border-t">
-            {/* ... tu código del input ... */}
-            <div className="flex gap-2">
+          {showScrollBtn && (
+            <button
+              onClick={scrollToBottom}
+              className="absolute bottom-24 right-8 bg-white p-2 rounded-full shadow-lg border border-gray-200 text-blue-600 hover:bg-gray-100 animate-bounce z-10"
+            >
+              <ArrowDownCircleIcon className="h-8 w-8" />
+            </button>
+          )}
+
+          {/* 4. BLOQUEO DE INPUT SI ESTÁ CERRADO */}
+          <div className="mt-4 pt-2 border-t relative">
+            {isClosed && (
+              <div className="absolute inset-0 bg-white bg-opacity-60 z-10 flex items-center justify-center backdrop-blur-[1px]">
+                <span className="text-xs font-bold text-gray-500 uppercase flex items-center bg-white px-3 py-1 rounded-full shadow-sm border">
+                  <LockClosedIcon className="h-3 w-3 mr-1" /> Ticket cerrado
+                </span>
+              </div>
+            )}
+
+            <div className="flex gap-2 items-end">
               <textarea
-                rows={2} // Un poco más compacto
+                rows={2}
                 value={nuevoMensaje}
                 onChange={(e) => setNuevoMensaje(e.target.value)}
-                className="flex-1 border border-gray-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 resize-none"
-                placeholder="Escribe un mensaje..."
+                className="flex-1 border border-gray-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 resize-none text-sm disabled:bg-gray-100"
+                placeholder={
+                  isClosed
+                    ? "No puedes enviar mensajes"
+                    : "Escribe un mensaje..."
+                }
+                disabled={isClosed} // Bloqueado
               />
               <button
                 onClick={enviar}
-                disabled={sending || !nuevoMensaje.trim()}
-                className="self-end inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white h-12 w-12 rounded-full shadow-md transition-transform active:scale-95 disabled:opacity-50 disabled:scale-100"
+                disabled={sending || !nuevoMensaje.trim() || isClosed} // Bloqueado
+                className="mb-1 inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white h-10 w-10 rounded-full shadow-md transition-transform active:scale-95 disabled:opacity-50 disabled:scale-100"
               >
                 <PaperAirplaneIcon className="h-5 w-5" />
               </button>

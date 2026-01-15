@@ -13,25 +13,35 @@ import {
   ChevronDownIcon,
   ChatBubbleLeftRightIcon,
   PaperAirplaneIcon,
+  ArrowDownCircleIcon,
+  LockClosedIcon, // <--- Icono para el bloqueo
 } from "@heroicons/react/24/solid";
 
 export default function ActualizarEstado() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { token } = useAuth();
+  // Obtenemos 'user' para saber quién soy en el chat
+  const { token, user } = useAuth();
 
   const [ticket, setTicket] = useState(null);
   const [estado, setEstado] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const chatRef = useRef(null);
 
   // ==== CHAT ====
   const [mensajes, setMensajes] = useState([]);
   const [nuevoMensaje, setNuevoMensaje] = useState("");
   const [enviandoMsg, setEnviandoMsg] = useState(false);
 
+  // Referencias para el scroll
+  const chatRef = useRef(null);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
+
+  // Lógica de bloqueo: Si el estado es CERRADO, se bloquea todo
+  const isClosed = ticket?.estado === "CERRADO" || ticket?.estado === "ANULADO";
+
+  // Cargar info del ticket
   useEffect(() => {
     (async () => {
       try {
@@ -50,7 +60,7 @@ export default function ActualizarEstado() {
     })();
   }, [id, token]);
 
-  // Cargar hilo de mensajes
+  // Cargar hilo de mensajes inicial
   useEffect(() => {
     if (!id) return;
     (async () => {
@@ -59,7 +69,7 @@ export default function ActualizarEstado() {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (r.ok) {
-          const data = await r.json(); // [{id, autorNombre, autorRol, mensaje, fecha}]
+          const data = await r.json();
           setMensajes(data);
         }
       } catch (e) {
@@ -68,19 +78,44 @@ export default function ActualizarEstado() {
     })();
   }, [id, token]);
 
-  // EFECTO: Baja el scroll automáticamente cuando llegan mensajes nuevos
+  // --- LÓGICA DE SCROLL INTELIGENTE ---
+
+  // 1. Función para bajar al final
+  const scrollToBottom = () => {
+    if (chatRef.current) {
+      chatRef.current.scrollTop = chatRef.current.scrollHeight;
+      setShowScrollBtn(false);
+    }
+  };
+
+  // 2. Detectar si el usuario subió el scroll
+  const handleScroll = () => {
+    if (chatRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = chatRef.current;
+      const distanceToBottom = scrollHeight - scrollTop - clientHeight;
+      // Mostrar botón si subió más de 100px
+      setShowScrollBtn(distanceToBottom > 100);
+    }
+  };
+
+  // 3. Efecto al recibir nuevos mensajes
   useEffect(() => {
     if (chatRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = chatRef.current;
-      // Verificamos si el usuario está cerca del final (o si apenas cargó)
-      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      const distanceToBottom = scrollHeight - scrollTop - clientHeight;
+
+      // Bajamos si está cerca del final (< 150px) o si es el inicio
+      const isNearBottom = distanceToBottom < 150;
 
       if (isNearBottom || mensajes.length <= 1) {
-        chatRef.current.scrollTop = chatRef.current.scrollHeight;
+        scrollToBottom();
+      } else {
+        setShowScrollBtn(true);
       }
     }
   }, [mensajes]);
 
+  // --- POLLING ---
   const recargarMensajes = async () => {
     try {
       const r = await fetch(`${API}/tickets/${id}/respuestas`, {
@@ -96,9 +131,10 @@ export default function ActualizarEstado() {
     const intervalo = setInterval(() => {
       recargarMensajes();
     }, 4000);
-
     return () => clearInterval(intervalo);
   }, [id, token]);
+
+  // --- ACCIONES ---
 
   const handleSave = async () => {
     setError("");
@@ -110,8 +146,15 @@ export default function ActualizarEstado() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error((await res.text()) || "Error actualizando");
+
       setSuccess("¡Estado guardado!");
-      setTimeout(() => navigate(-1), 800);
+
+      // Actualizamos localmente el ticket para aplicar el bloqueo inmediato si se cerró
+      setTicket((prev) => ({ ...prev, estado: estado }));
+
+      if (estado === "CERRADO") {
+        // Opcional: podrías redirigir al técnico o dejarlo ahí bloqueado
+      }
     } catch (e) {
       setError(e.message);
     } finally {
@@ -119,7 +162,6 @@ export default function ActualizarEstado() {
     }
   };
 
-  // Enviar mensaje (pedir más detalles, conversar)
   const handleEnviarMensaje = async () => {
     if (!nuevoMensaje.trim()) return;
     setError("");
@@ -138,7 +180,7 @@ export default function ActualizarEstado() {
       });
       if (!resp.ok) throw new Error("No se pudo enviar el mensaje");
       setNuevoMensaje("");
-      await recargarMensajes(); // refresca el hilo
+      await recargarMensajes();
     } catch (e) {
       setError(e.message);
     } finally {
@@ -175,8 +217,8 @@ export default function ActualizarEstado() {
 
       {/* Main */}
       <main className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Detalles del ticket */}
-        <section className="lg:col-span-7 bg-white rounded-lg shadow p-6">
+        {/* COLUMNA IZQUIERDA: Detalles del ticket */}
+        <section className="lg:col-span-7 bg-white rounded-lg shadow p-6 h-fit">
           {error && (
             <div className="mb-4 p-3 bg-red-50 border-l-4 border-red-500 text-red-700 flex items-center">
               <XCircleIcon className="h-5 w-5 mr-2" /> {error}
@@ -186,16 +228,22 @@ export default function ActualizarEstado() {
             <div className="animate-pulse space-y-4">
               <div className="h-6 bg-gray-200 rounded w-1/3"></div>
               <div className="h-4 bg-gray-200 rounded w-full"></div>
-              <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-              <div className="h-4 bg-gray-200 rounded w-2/3"></div>
             </div>
           ) : (
             <div className="space-y-6">
-              <div className="flex items-center">
-                <PencilIcon className="h-6 w-6 text-blue-500 mr-2" />
-                <h2 className="text-xl font-bold text-gray-800">
-                  Detalles del Ticket
-                </h2>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <PencilIcon className="h-6 w-6 text-blue-500 mr-2" />
+                  <h2 className="text-xl font-bold text-gray-800">
+                    Detalles del Ticket
+                  </h2>
+                </div>
+                {/* Badge de Bloqueo si está cerrado */}
+                {isClosed && (
+                  <span className="bg-red-100 text-red-800 text-xs font-bold px-3 py-1 rounded-full flex items-center border border-red-200">
+                    <LockClosedIcon className="w-3 h-3 mr-1" /> TICKET CERRADO
+                  </span>
+                )}
               </div>
 
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-gray-700">
@@ -226,7 +274,13 @@ export default function ActualizarEstado() {
                     Estado Actual
                   </dt>
                   <dd className="mt-1">
-                    <span className="px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 uppercase">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-semibold uppercase ${
+                        isClosed
+                          ? "bg-green-100 text-green-800"
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}
+                    >
                       {ticket.estado.replace("_", " ")}
                     </span>
                   </dd>
@@ -244,119 +298,178 @@ export default function ActualizarEstado() {
           )}
         </section>
 
-        {/* Panel derecho: actualizar estado + chat */}
-        <aside className="lg:col-span-5 bg-white rounded-lg shadow p-6 flex flex-col">
+        {/* COLUMNA DERECHA: Chat + Estado */}
+        <aside className="lg:col-span-5 bg-white rounded-lg shadow p-6 flex flex-col relative h-[600px]">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
-            Cambiar Estado
+            Gestión y Chat
           </h2>
 
-          <div className="relative mb-6">
+          {/* Selector de Estado */}
+          <div
+            className={`p-4 rounded-lg border mb-4 transition-colors ${
+              isClosed
+                ? "bg-gray-100 border-gray-200 opacity-75"
+                : "bg-gray-50 border-gray-200"
+            }`}
+          >
             <label
               htmlFor="estado"
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="block text-sm font-medium text-gray-700 mb-2"
             >
-              Selecciona Estado
+              Cambiar Estado {isClosed && "(Bloqueado)"}
             </label>
-            <select
-              id="estado"
-              value={estado}
-              onChange={(e) => setEstado(e.target.value)}
-              disabled={isSaving}
-              className="w-full bg-white border border-gray-300 rounded-lg py-2 pl-3 pr-10 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {[
-                "PENDIENTE",
-                "ASIGNADO",
-                "EN_PROCESO",
-                "CERRADO",
-                "ANULADO",
-              ].map((s) => (
-                <option key={s} value={s}>
-                  {s.replace("_", " ")}
-                </option>
-              ))}
-            </select>
-            <ChevronDownIcon className="pointer-events-none absolute right-3 top-9 h-5 w-5 text-gray-400" />
-          </div>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <select
+                  id="estado"
+                  value={estado}
+                  onChange={(e) => setEstado(e.target.value)}
+                  disabled={isSaving || isClosed} // BLOQUEO
+                  className="w-full bg-white border border-gray-300 rounded-lg py-2 pl-3 pr-8 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm appearance-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  {[
+                    "PENDIENTE",
+                    "ASIGNADO",
+                    "EN_PROCESO",
+                    "CERRADO",
+                    "ANULADO",
+                  ].map((s) => (
+                    <option key={s} value={s}>
+                      {s.replace("_", " ")}
+                    </option>
+                  ))}
+                </select>
+                {!isClosed && (
+                  <ChevronDownIcon className="pointer-events-none absolute right-2 top-2.5 h-4 w-4 text-gray-500" />
+                )}
+              </div>
 
-          <div className="mt-auto flex space-x-4">
-            <button
-              onClick={() => navigate(-1)}
-              disabled={isSaving}
-              className="flex-1 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-gray-700 transition disabled:opacity-50"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex-1 flex items-center justify-center py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white transition disabled:opacity-50"
-            >
-              {isSaving && (
-                <ArrowPathIcon className="h-5 w-5 animate-spin mr-2" />
+              {!isClosed && (
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50 flex items-center"
+                >
+                  {isSaving && (
+                    <ArrowPathIcon className="h-4 w-4 animate-spin mr-1" />
+                  )}
+                  Guardar
+                </button>
               )}
-              {isSaving ? "Guardando..." : "Guardar Cambios"}
-            </button>
+            </div>
+            {success && (
+              <div className="mt-2 text-xs text-green-700 flex items-center font-medium">
+                <CheckCircleIcon className="h-4 w-4 mr-1" /> {success}
+              </div>
+            )}
           </div>
 
-          {success && (
-            <div className="mt-4 flex items-center text-green-700">
-              <CheckCircleIcon className="h-6 w-6 mr-2" />
-              {success}
-            </div>
-          )}
+          {/* ==== CHAT ==== */}
+          <div className="flex items-center mb-2">
+            <ChatBubbleLeftRightIcon className="h-5 w-5 text-blue-600 mr-2" />
+            <h3 className="text-lg font-semibold text-gray-800">Mensajes</h3>
+          </div>
 
-          {/* ==== CHAT (simple) ==== */}
-          <div className="mt-8">
-            <div className="flex items-center mb-3">
-              <ChatBubbleLeftRightIcon className="h-6 w-6 text-blue-600 mr-2" />
-              <h3 className="text-lg font-semibold text-gray-800">Mensajes</h3>
-            </div>
-
-            {/* Lista */}
-            <div
-              ref={chatRef}
-              className="max-h-72 overflow-y-auto border rounded-lg p-3 space-y-3"
-            >
-              {mensajes.length === 0 ? (
-                <p className="text-sm text-gray-500">Aún no hay mensajes.</p>
-              ) : (
-                mensajes.map((m) => (
-                  <div key={m.id} className="bg-gray-50 rounded p-2">
-                    <div className="text-xs text-gray-500">
-                      {m.autorNombre} · {m.autorRol} ·{" "}
-                      {new Date(m.fecha).toLocaleString()}
-                    </div>
-                    <div className="text-sm text-gray-800 whitespace-pre-wrap mt-1">
-                      {m.mensaje}
+          {/* Lista de Mensajes (Estilo WhatsApp) */}
+          <div
+            ref={chatRef}
+            onScroll={handleScroll}
+            className="flex-1 overflow-y-auto border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-4 shadow-inner relative"
+          >
+            {mensajes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                <p className="text-sm">Aún no hay mensajes.</p>
+              </div>
+            ) : (
+              mensajes.map((m) => {
+                const isMe = user?.id === m.autorId;
+                return (
+                  <div
+                    key={m.id}
+                    className={`flex flex-col ${
+                      isMe ? "items-end" : "items-start"
+                    }`}
+                  >
+                    <div
+                      className={`max-w-[85%] px-4 py-3 rounded-2xl shadow-sm relative ${
+                        isMe
+                          ? "bg-blue-600 text-white rounded-tr-none"
+                          : "bg-white text-gray-800 border border-gray-200 rounded-tl-none"
+                      }`}
+                    >
+                      <div
+                        className={`text-xs font-bold mb-1 flex items-center gap-2 ${
+                          isMe ? "text-blue-100" : "text-blue-600"
+                        }`}
+                      >
+                        <span>{isMe ? "Tú" : m.autorNombre}</span>
+                        <span
+                          className={`font-normal text-[10px] uppercase opacity-75 ${
+                            isMe ? "text-blue-200" : "text-gray-400"
+                          }`}
+                        >
+                          • {m.autorRol}
+                        </span>
+                      </div>
+                      <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                        {m.mensaje}
+                      </p>
+                      <div
+                        className={`text-[10px] mt-1 text-right ${
+                          isMe ? "text-blue-200" : "text-gray-400"
+                        }`}
+                      >
+                        {new Date(m.fecha).toLocaleString()}
+                      </div>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
+                );
+              })
+            )}
+          </div>
 
-            {/* Input */}
-            <div className="mt-3">
-              <label className="block text-sm text-gray-700 mb-1">
-                Escribe un mensaje para solicitar más detalles
-              </label>
+          {/* Botón Flotante para bajar */}
+          {showScrollBtn && (
+            <button
+              onClick={scrollToBottom}
+              className="absolute bottom-28 right-10 bg-white p-2 rounded-full shadow-lg border border-gray-200 text-blue-600 hover:bg-gray-100 transition-all animate-bounce z-10"
+              title="Ir al final"
+            >
+              <ArrowDownCircleIcon className="h-8 w-8" />
+            </button>
+          )}
+
+          {/* Input Chat */}
+          <div className="mt-3 pt-2 border-t relative">
+            {/* Overlay si está cerrado */}
+            {isClosed && (
+              <div className="absolute inset-0 bg-white bg-opacity-60 z-10 flex items-center justify-center backdrop-blur-[1px]">
+                <span className="text-xs font-bold text-gray-500 uppercase flex items-center bg-white px-3 py-1 rounded-full shadow-sm border">
+                  <LockClosedIcon className="h-3 w-3 mr-1" /> Chat cerrado
+                </span>
+              </div>
+            )}
+
+            <div className="flex gap-2 items-end">
               <textarea
-                rows={3}
+                rows={2}
                 value={nuevoMensaje}
                 onChange={(e) => setNuevoMensaje(e.target.value)}
-                className="w-full border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Ej: ¿Puedes adjuntar una captura del error y los pasos para reproducirlo?"
+                className="flex-1 border border-gray-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 resize-none text-sm disabled:bg-gray-100"
+                placeholder={
+                  isClosed
+                    ? "No se pueden enviar mensajes"
+                    : "Escribe un mensaje..."
+                }
+                disabled={isClosed} // BLOQUEO
               />
-              <div className="flex justify-end mt-2">
-                <button
-                  onClick={handleEnviarMensaje}
-                  disabled={enviandoMsg || !nuevoMensaje.trim()}
-                  className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg disabled:opacity-50"
-                >
-                  <PaperAirplaneIcon className="h-4 w-4 mr-2" />
-                  {enviandoMsg ? "Enviando..." : "Enviar"}
-                </button>
-              </div>
+              <button
+                onClick={handleEnviarMensaje}
+                disabled={enviandoMsg || !nuevoMensaje.trim() || isClosed} // BLOQUEO
+                className="mb-1 inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white h-10 w-10 rounded-full shadow-md transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <PaperAirplaneIcon className="h-5 w-5" />
+              </button>
             </div>
           </div>
         </aside>

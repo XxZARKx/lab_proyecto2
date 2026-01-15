@@ -73,6 +73,7 @@ function App() {
           <Route element={<PrivateRoute />}>
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/tickets" element={<TicketListPage />} />
+            <Route path="/tickets/:id" element={<TicketDetalle />} />
 
             {/* 🧑 Usuario */}
             <Route path="/usuario" element={<UsuarioDashboard />} />
