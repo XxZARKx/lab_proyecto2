@@ -99,6 +99,10 @@ function App() {
               path="/tecnico/tickets/:id/actualizar"
               element={<ActualizarEstado />}
             />
+            <Route
+              path="/tecnico/notificaciones"
+              element={<NotificacionesPage />}
+            />
 
             {/* 🛠️ Admin */}
             <Route element={<AdminRoute />}>

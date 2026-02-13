@@ -13,12 +13,15 @@ import {
 import TicketStatusBadge from "../../components/shared/TicketStatusBadge";
 import { PriorityBadge } from "../../components/shared/PriorityBadge";
 import { toLocalFromApi } from "../../utils/dates";
+import { getUnreadCount } from "../../services/notificaciones";
 // 1. IMPORTAR EL NUEVO COMPONENTE
 import StatusSummaryGrid from "./StatusSummaryGrid";
 
 export default function DashboardTecnico() {
   const [tickets, setTickets] = useState([]);
   // Eliminamos el estado 'counts' manual
+
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // BUSCADOR
   const [query, setQuery] = useState("");
@@ -46,7 +49,7 @@ export default function DashboardTecnico() {
 
         // Orden: más recientes primero
         const sorted = [...data].sort(
-          (a, b) => new Date(b.fechaCreacion) - new Date(a.fechaCreacion)
+          (a, b) => new Date(b.fechaCreacion) - new Date(a.fechaCreacion),
         );
         setTickets(sorted);
         // Ya no necesitamos calcular 'counts' manualmente
@@ -58,6 +61,20 @@ export default function DashboardTecnico() {
     })();
   }, [token]);
 
+  useEffect(() => {
+    const fetchNotif = async () => {
+      try {
+        const count = await getUnreadCount(token);
+        setUnreadCount(count);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchNotif();
+    const interval = setInterval(fetchNotif, 30000); // Revisar cada 30s
+    return () => clearInterval(interval);
+  }, [token]);
+
   // FILTRO por ID, título y descripción
   const q = query.trim().toLowerCase();
   const filtered = q
@@ -65,7 +82,7 @@ export default function DashboardTecnico() {
         (t) =>
           t.titulo?.toLowerCase().includes(q) ||
           t.descripcion?.toLowerCase().includes(q) ||
-          String(t.id).includes(q)
+          String(t.id).includes(q),
       )
     : tickets;
 
@@ -127,9 +144,23 @@ export default function DashboardTecnico() {
         {/* Header */}
         <header className="flex justify-between items-center mb-8">
           <div className="flex items-center space-x-4">
-            <BellAlertIcon className="h-6 w-6 text-yellow-500" />
-            <UserCircleIcon className="h-6 w-6 text-blue-500" />
-            <span className="font-medium text-gray-800">Panel Técnico</span>
+            <div className="flex items-center space-x-4">
+              {/* Botón de notificaciones activo */}
+              <button
+                onClick={() => navigate("/tecnico/notificaciones")}
+                className="relative p-1 rounded-full hover:bg-gray-100 transition"
+              >
+                <BellAlertIcon className="h-6 w-6 text-yellow-500" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              <UserCircleIcon className="h-6 w-6 text-blue-500" />
+              <span className="font-medium text-gray-800">Panel Técnico</span>
+            </div>
           </div>
           <button
             onClick={handleLogout}
