@@ -14,7 +14,7 @@ import {
 } from "@heroicons/react/24/solid";
 
 export default function NotificacionesPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const navigate = useNavigate();
 
   const [items, setItems] = useState([]);
@@ -57,6 +57,16 @@ export default function NotificacionesPage() {
     await markAllAsRead(token);
     setPage(0);
     load();
+  };
+
+  const handleVerTicket = (ticketId) => {
+    if (user?.rol === "TECNICO") {
+      navigate(`/tecnico/tickets/${ticketId}/actualizar`);
+    } else if (user?.rol === "ADMINISTRADOR") {
+      navigate(`/tickets/${ticketId}`);
+    } else {
+      navigate(`/usuario/tickets/${ticketId}`);
+    }
   };
 
   return (
@@ -149,7 +159,8 @@ export default function NotificacionesPage() {
 
                   {n.ticketId && (
                     <button
-                      onClick={() => navigate(`/usuario/tickets/${n.ticketId}`)}
+                      // 3. Usamos la función dinámica en lugar de navigate directo
+                      onClick={() => handleVerTicket(n.ticketId)}
                       className="mt-3 inline-flex items-center text-sm text-blue-600 hover:text-blue-800 font-medium group"
                     >
                       Ver ticket #{n.ticketId}
