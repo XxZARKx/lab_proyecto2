@@ -230,67 +230,90 @@ export default function ActualizarEstado() {
               <div className="h-4 bg-gray-200 rounded w-full"></div>
             </div>
           ) : (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <PencilIcon className="h-6 w-6 text-blue-500 mr-2" />
-                  <h2 className="text-xl font-bold text-gray-800">
-                    Detalles del Ticket
-                  </h2>
-                </div>
-                {/* Badge de Bloqueo si está cerrado */}
-                {isClosed && (
-                  <span className="bg-red-100 text-red-800 text-xs font-bold px-3 py-1 rounded-full flex items-center border border-red-200">
-                    <LockClosedIcon className="w-3 h-3 mr-1" /> TICKET CERRADO
-                  </span>
-                )}
+            <div className="space-y-6 text-gray-700">
+              {/* Sección del Solicitante con Label */}
+              <div className="sm:col-span-2">
+                <dt className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+                  Solicitante
+                </dt>
+                <dd className="flex items-center gap-3 p-3 bg-blue-50/50 rounded-xl border border-blue-100">
+                  <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0 shadow-sm">
+                    {ticket?.usuario?.nombres?.charAt(0) || "U"}
+                  </div>
+                  <div className="overflow-hidden">
+                    <p className="text-sm font-bold text-gray-900 truncate">
+                      {ticket?.usuario?.nombres}
+                    </p>
+                    <p className="text-[11px] text-gray-500 truncate">
+                      {ticket?.usuario?.correo}
+                    </p>
+                  </div>
+                </dd>
               </div>
 
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-gray-700">
+              {/* Grid de Información del Ticket */}
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
                 <div>
-                  <dt className="text-sm font-medium text-gray-500 uppercase">
+                  <dt className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">
                     Título
                   </dt>
-                  <dd className="mt-1">{ticket.titulo}</dd>
+                  <dd className="text-sm font-semibold text-gray-900 leading-tight">
+                    {ticket.titulo}
+                  </dd>
                 </div>
+
                 <div>
-                  <dt className="text-sm font-medium text-gray-500 uppercase">
+                  <dt className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">
                     Prioridad
                   </dt>
                   <dd className="mt-1">
-                    <span className="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                        ticket.prioridad === "ALTA"
+                          ? "bg-red-50 text-red-700 border-red-100"
+                          : ticket.prioridad === "MEDIA"
+                            ? "bg-yellow-50 text-yellow-700 border-yellow-100"
+                            : "bg-green-50 text-green-700 border-green-100"
+                      }`}
+                    >
                       {ticket.prioridad}
                     </span>
                   </dd>
                 </div>
-                <div className="sm:col-span-2">
-                  <dt className="text-sm font-medium text-gray-500 uppercase">
-                    Descripción
-                  </dt>
-                  <dd className="mt-1 text-gray-600">{ticket.descripcion}</dd>
-                </div>
+
                 <div>
-                  <dt className="text-sm font-medium text-gray-500 uppercase">
+                  <dt className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">
                     Estado Actual
                   </dt>
                   <dd className="mt-1">
                     <span
-                      className={`px-2 py-1 rounded-full text-xs font-semibold uppercase ${
+                      className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase border ${
                         isClosed
-                          ? "bg-green-100 text-green-800"
-                          : "bg-yellow-100 text-yellow-800"
+                          ? "bg-gray-100 text-gray-600 border-gray-200"
+                          : "bg-emerald-50 text-emerald-700 border-emerald-100"
                       }`}
                     >
                       {ticket.estado.replace("_", " ")}
                     </span>
                   </dd>
                 </div>
+
                 <div>
-                  <dt className="text-sm font-medium text-gray-500 uppercase">
-                    Fecha Creación
+                  <dt className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">
+                    Fecha de Creación
                   </dt>
-                  <dd className="mt-1">
+                  <dd className="text-sm text-gray-600 font-medium">
                     {new Date(ticket.fechaCreacion).toLocaleString()}
+                  </dd>
+                </div>
+
+                {/* Descripción en ancho completo */}
+                <div className="sm:col-span-2">
+                  <dt className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+                    Descripción
+                  </dt>
+                  <dd className="bg-gray-50 p-3 rounded-lg text-sm text-gray-600 leading-relaxed border border-gray-100 whitespace-pre-wrap">
+                    {ticket.descripcion}
                   </dd>
                 </div>
               </dl>
@@ -327,17 +350,13 @@ export default function ActualizarEstado() {
                   disabled={isSaving || isClosed} // BLOQUEO
                   className="w-full bg-white border border-gray-300 rounded-lg py-2 pl-3 pr-8 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm appearance-none disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
-                  {[
-                    "PENDIENTE",
-                    "ASIGNADO",
-                    "EN_PROCESO",
-                    "CERRADO",
-                    "ANULADO",
-                  ].map((s) => (
-                    <option key={s} value={s}>
-                      {s.replace("_", " ")}
-                    </option>
-                  ))}
+                  {["PENDIENTE", "ASIGNADO", "EN_PROCESO", "CERRADO"].map(
+                    (s) => (
+                      <option key={s} value={s}>
+                        {s.replace("_", " ")}
+                      </option>
+                    ),
+                  )}
                 </select>
                 {!isClosed && (
                   <ChevronDownIcon className="pointer-events-none absolute right-2 top-2.5 h-4 w-4 text-gray-500" />

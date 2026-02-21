@@ -1,3 +1,4 @@
+// src/pages/Dashboard/AdminDashboard.jsx
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { API } from "../../api";
@@ -12,26 +13,31 @@ import {
   ArrowRightOnRectangleIcon,
   MagnifyingGlassIcon,
   EyeIcon,
+  ChartBarIcon,
+  Squares2X2Icon,
+  ChartPieIcon,
+  XMarkIcon, // <- Ícono para quitar el filtro (opcional)
 } from "@heroicons/react/24/solid";
 import TicketStatusBadge from "../../components/shared/TicketStatusBadge";
 import { PriorityBadge } from "../../components/shared/PriorityBadge";
-// 1. IMPORTAR EL NUEVO COMPONENTE
 import StatusSummaryGrid from "./StatusSummaryGrid";
+import TicketCharts from "./TicketCharts";
 
 export default function AdminDashboard() {
   const [tickets, setTickets] = useState([]);
-  // Eliminamos el estado 'counts' ya que el componente lo calcula solo
 
-  // BUSCADOR
+  const [activeView, setActiveView] = useState("cards");
+
+  // NUEVOS ESTADOS PARA FILTROS
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState(""); // "" significa "Todos"
 
-  // PAGINACIÓN
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout, token } = useAuth(); // Usamos el token del contexto
+  const { logout, token } = useAuth();
 
   useEffect(() => {
     (async () => {
@@ -40,14 +46,10 @@ export default function AdminDashboard() {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-
-        // Orden: más recientes primero
         const sorted = [...data].sort(
-          (a, b) => new Date(b.fechaCreacion) - new Date(a.fechaCreacion)
+          (a, b) => new Date(b.fechaCreacion) - new Date(a.fechaCreacion),
         );
         setTickets(sorted);
-        // Ya no necesitamos calcular 'counts' manualmente aquí
-
         setCurrentPage(1);
       } catch (err) {
         console.error("Error al obtener tickets:", err);
@@ -55,29 +57,32 @@ export default function AdminDashboard() {
     })();
   }, [token]);
 
-  // FILTRADO por query (título, descripción, id)
+  // LÓGICA DE FILTRADO (Por búsqueda de texto Y por tarjeta clickeada)
   const q = query.trim().toLowerCase();
-  const filtered = q
-    ? tickets.filter(
-        (t) =>
-          t.titulo?.toLowerCase().includes(q) ||
-          t.descripcion?.toLowerCase().includes(q) ||
-          String(t.id).includes(q)
-      )
-    : tickets;
+  const filtered = tickets.filter((t) => {
+    // 1. Filtro de búsqueda
+    const matchesQuery =
+      q === "" ||
+      t.titulo?.toLowerCase().includes(q) ||
+      t.descripcion?.toLowerCase().includes(q) ||
+      String(t.id).includes(q);
 
-  // Reset página cuando cambia el filtro
+    // 2. Filtro de estado (tarjetas)
+    const matchesStatus = statusFilter === "" || t.estado === statusFilter;
+
+    return matchesQuery && matchesStatus;
+  });
+
+  // Reset página cuando cambia CUALQUIERA de los dos filtros
   useEffect(() => {
     setCurrentPage(1);
-  }, [query]);
+  }, [query, statusFilter]);
 
-  // PAGINACIÓN sobre "filtered"
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = Math.min(startIndex + pageSize, filtered.length);
   const pageItems = filtered.slice(startIndex, endIndex);
 
-  // Ajuste si cambia pageSize o cantidad total
   useEffect(() => {
     const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
     if (currentPage > pages) setCurrentPage(pages);
@@ -112,11 +117,15 @@ export default function AdminDashboard() {
       icon: <DocumentChartBarIcon className="w-5 h-5" />,
       label: "Reporte de tickets",
     },
+    {
+      to: "/admin/tecnicos-stats",
+      icon: <ChartBarIcon className="w-5 h-5" />,
+      label: "Rendimiento Técnicos",
+    },
   ];
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
       <aside className="w-56 bg-gray-800 text-gray-200 flex-shrink-0">
         <div className="py-6 px-4 text-xl font-bold flex items-center space-x-2 border-b border-gray-700">
           <UsersIcon className="w-6 h-6 text-yellow-400" />
@@ -138,9 +147,7 @@ export default function AdminDashboard() {
         </nav>
       </aside>
 
-      {/* Main */}
       <main className="flex-1 flex flex-col">
-        {/* Top bar */}
         <header className="flex justify-between items-center bg-white shadow px-6 py-4">
           <h2 className="text-2xl font-semibold text-gray-800">
             Panel de Control
@@ -154,27 +161,76 @@ export default function AdminDashboard() {
           </button>
         </header>
 
-        {/* 2. SECCIÓN DE ESTADÍSTICAS DINÁMICA */}
-        <section className="p-6 bg-white border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">
-            Resumen Global
-          </h3>
-          <StatusSummaryGrid tickets={tickets} />
+        <section className="p-6 bg-gray-50 border-b border-gray-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Resumen Global
+            </h3>
+
+            <div className="flex bg-gray-200 p-1 rounded-lg w-fit">
+              <button
+                onClick={() => setActiveView("cards")}
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                  activeView === "cards"
+                    ? "bg-white text-blue-600 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-300/50"
+                }`}
+              >
+                <Squares2X2Icon className="w-4 h-4" />
+                Tarjetas
+              </button>
+              <button
+                onClick={() => setActiveView("charts")}
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                  activeView === "charts"
+                    ? "bg-white text-blue-600 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-300/50"
+                }`}
+              >
+                <ChartPieIcon className="w-4 h-4" />
+                Gráficos
+              </button>
+            </div>
+          </div>
+
+          <div className="transition-all duration-300">
+            {activeView === "cards" ? (
+              <StatusSummaryGrid
+                tickets={tickets}
+                statusFilter={statusFilter}
+                onStatusChange={setStatusFilter}
+              />
+            ) : (
+              <TicketCharts tickets={tickets} />
+            )}
+          </div>
         </section>
 
-        {/* Tabla */}
         <section className="p-6 overflow-auto">
-          {/* Controles: buscador + paginación superior */}
-          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative w-full sm:w-80">
-              <input
-                type="text"
-                placeholder="Buscar por ID, título o descripción…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              />
-              <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          {/* Fila de controles y buscador */}
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+              <div className="relative w-full sm:w-80">
+                <input
+                  type="text"
+                  placeholder="Buscar por ID, título o descripción…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                />
+                <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              </div>
+
+              {/* Píldora que indica que hay un filtro de tarjeta activo */}
+              {statusFilter && (
+                <button
+                  onClick={() => setStatusFilter("")}
+                  className="inline-flex items-center gap-1 text-sm bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full hover:bg-blue-200 transition font-medium border border-blue-200"
+                >
+                  Filtrando: {statusFilter.replace("_", " ")}
+                  <XMarkIcon className="w-4 h-4 ml-1" />
+                </button>
+              )}
             </div>
 
             <div className="flex items-center justify-between sm:justify-end gap-4">
@@ -188,7 +244,9 @@ export default function AdminDashboard() {
                 resultados
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600">Por página:</label>
+                <label className="text-sm text-gray-600 hidden md:block">
+                  Por página:
+                </label>
                 <select
                   value={pageSize}
                   onChange={(e) => {
@@ -206,7 +264,7 @@ export default function AdminDashboard() {
           </div>
 
           <table className="min-w-full bg-white rounded-lg overflow-hidden shadow-sm">
-            <thead className="bg-gray-50 sticky top-0">
+            <thead className="bg-gray-50 sticky top-0 z-10">
               <tr>
                 {[
                   "#",
@@ -232,14 +290,11 @@ export default function AdminDashboard() {
                   key={t.id}
                   className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}
                 >
-                  {/* ENLACE EN EL ID */}
                   <td className="px-4 py-3 text-sm text-blue-600 font-medium">
                     <Link to={`/tickets/${t.id}`} className="hover:underline">
                       #{t.id}
                     </Link>
                   </td>
-
-                  {/* ENLACE EN EL TÍTULO */}
                   <td className="px-4 py-3 text-sm text-gray-800">
                     <Link
                       to={`/tickets/${t.id}`}
@@ -248,7 +303,6 @@ export default function AdminDashboard() {
                       {t.titulo}
                     </Link>
                   </td>
-
                   <td className="px-4 py-3 text-sm text-gray-600 line-clamp-1 max-w-[200px] truncate">
                     {t.descripcion}
                   </td>
@@ -261,20 +315,16 @@ export default function AdminDashboard() {
                   <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
                     {toLocalFromApi(t.fechaCreacion)}
                   </td>
-
-                  {/* BOTÓN VER DETALLE */}
                   <td className="px-4 py-3 text-sm">
                     <Link
                       to={`/tickets/${t.id}`}
                       className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-2 py-1 rounded transition"
                     >
-                      <EyeIcon className="h-4 w-4" />
-                      Ver
+                      <EyeIcon className="h-4 w-4" /> Ver
                     </Link>
                   </td>
                 </tr>
               ))}
-
               {pageItems.length === 0 && (
                 <tr>
                   <td
@@ -289,43 +339,44 @@ export default function AdminDashboard() {
           </table>
 
           {/* Paginación inferior */}
-          <div className="mt-4 flex items-center justify-between">
-            <div className="text-sm text-gray-600">
-              Página <span className="font-semibold">{currentPage}</span> de{" "}
-              <span className="font-semibold">{totalPages}</span>
+          {filtered.length > 0 && (
+            <div className="mt-4 flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Página <span className="font-semibold">{currentPage}</span> de{" "}
+                <span className="font-semibold">{totalPages}</span>
+              </div>
+              <div className="inline-flex rounded-md shadow-sm">
+                <button
+                  onClick={() => goTo(1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-l-md bg-white hover:bg-gray-50 disabled:opacity-50"
+                >
+                  « Primera
+                </button>
+                <button
+                  onClick={() => goTo(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-sm border-t border-b border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
+                >
+                  ‹ Anterior
+                </button>
+                <button
+                  onClick={() => goTo(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 text-sm border-t border-b border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Siguiente ›
+                </button>
+                <button
+                  onClick={() => goTo(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-r-md bg-white hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Última »
+                </button>
+              </div>
             </div>
-
-            <div className="inline-flex rounded-md shadow-sm">
-              <button
-                onClick={() => goTo(1)}
-                disabled={currentPage === 1}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-l-md bg-white hover:bg-gray-50 disabled:opacity-50"
-              >
-                « Primera
-              </button>
-              <button
-                onClick={() => goTo(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="px-3 py-1.5 text-sm border-t border-b border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
-              >
-                ‹ Anterior
-              </button>
-              <button
-                onClick={() => goTo(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1.5 text-sm border-t border-b border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
-              >
-                Siguiente ›
-              </button>
-              <button
-                onClick={() => goTo(totalPages)}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-r-md bg-white hover:bg-gray-50 disabled:opacity-50"
-              >
-                Última »
-              </button>
-            </div>
-          </div>
+          )}
         </section>
       </main>
     </div>

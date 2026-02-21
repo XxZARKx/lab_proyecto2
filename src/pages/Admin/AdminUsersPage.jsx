@@ -76,7 +76,7 @@ export default function AdminUsersPage() {
   const base = usuarios.filter(
     (u) =>
       (meId ? u.id !== meId : true) &&
-      (u.rol === "USUARIO" || u.rol === "TECNICO")
+      (u.rol === "USUARIO" || u.rol === "TECNICO"),
   );
 
   const filtered = base.filter((u) => {
@@ -176,7 +176,7 @@ export default function AdminUsersPage() {
       }
       const updated = await res.json();
       setUsuarios((prev) =>
-        prev.map((u) => (u.id === updated.id ? updated : u))
+        prev.map((u) => (u.id === updated.id ? updated : u)),
       );
       setInfo("Cambios guardados.");
       closeEdit();
@@ -240,8 +240,8 @@ export default function AdminUsersPage() {
             {loading
               ? "Cargando usuarios..."
               : deleting
-              ? "Eliminando usuario..."
-              : "Guardando cambios..."}
+                ? "Eliminando usuario..."
+                : "Guardando cambios..."}
           </div>
         )}
 
@@ -312,8 +312,8 @@ export default function AdminUsersPage() {
                           usuario.rol === "ADMINISTRADOR"
                             ? "bg-purple-100 text-purple-800"
                             : usuario.rol === "TECNICO"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-green-100 text-green-800"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-green-100 text-green-800"
                         }`}
                       >
                         {usuario.rol}
@@ -456,7 +456,6 @@ export default function AdminUsersPage() {
                     >
                       <option value="USUARIO">USUARIO</option>
                       <option value="TECNICO">TECNICO</option>
-                      <option value="ADMINISTRADOR">ADMINISTRADOR</option>
                     </select>
                     {/* Si cambias a ADMINISTRADOR, el usuario dejará de aparecer en esta lista tras guardar. */}
                   </div>

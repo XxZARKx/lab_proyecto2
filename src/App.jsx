@@ -36,6 +36,7 @@ import AdminUsersPage from "./pages/Admin/AdminUsersPage";
 import EditarUsuario from "./pages/Admin/EditarUsuario";
 import AsignarTicketPage from "./pages/Admin/AsignarTicketPage";
 import AdminReportsPage from "./pages/Admin/AdminReportsPage";
+import AdminTecnicosStats from "./pages/Admin/AdminTecnicosStats";
 
 // Usuario Extra
 import TicketsPendientes from "./pages/Tickets/TicketsPendientes";
@@ -112,6 +113,10 @@ function App() {
               <Route path="/admin/asignar" element={<AsignarTicketPage />} />
               <Route path="/admin/users/:id/edit" element={<EditarUsuario />} />
               <Route path="/admin/reportes" element={<AdminReportsPage />} />
+              <Route
+                path="/admin/tecnicos-stats"
+                element={<AdminTecnicosStats />}
+              />
             </Route>
           </Route>
         </Routes>

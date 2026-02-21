@@ -1,27 +1,27 @@
-// src/components/Dashboard/StatusSummaryGrid.jsx
+// src/pages/Dashboard/StatusSummaryGrid.jsx
 import { useMemo } from "react";
 import { statusConfig, getStatusConfig } from "../../utils/ticketStatusConfig";
 
-export default function StatusSummaryGrid({ tickets = [] }) {
-  // Usamos useMemo para calcular los conteos solo cuando los tickets cambian
+export default function StatusSummaryGrid({
+  tickets = [],
+  statusFilter = "",
+  onStatusChange,
+}) {
   const summaryData = useMemo(() => {
     if (tickets.length === 0) return [];
 
-    // 1. Contar dinámicamente las ocurrencias de cada estado
     const countsMap = tickets.reduce((acc, ticket) => {
       const status = ticket.estado;
       acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {});
 
-    // 2. Convertir el mapa en un array de objetos con la config visual
     let summaryList = Object.entries(countsMap).map(([statusRaw, count]) => ({
       statusRaw,
       count,
       ...getStatusConfig(statusRaw),
     }));
 
-    // 3. Ordenar: podemos definir un orden de prioridad si queremos que aparezcan siempre igual
     const sortOrder = [
       "PENDIENTE",
       "ASIGNADO",
@@ -32,15 +32,14 @@ export default function StatusSummaryGrid({ tickets = [] }) {
     summaryList.sort((a, b) => {
       let indexA = sortOrder.indexOf(a.statusRaw);
       let indexB = sortOrder.indexOf(b.statusRaw);
-      // Si no está en la lista de orden, va al final
       if (indexA === -1) indexA = 999;
       if (indexB === -1) indexB = 999;
       return indexA - indexB;
     });
 
-    // 4. Agregar la tarjeta de TOTAL al principio
     summaryList.unshift({
       ...statusConfig.TOTAL,
+      statusRaw: "", // Un string vacío representará "Todos los tickets"
       count: tickets.length,
     });
 
@@ -56,27 +55,44 @@ export default function StatusSummaryGrid({ tickets = [] }) {
   }
 
   return (
-    // Grid responsivo: se adapta de 2 a 5 columnas según el ancho
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
       {summaryData.map((item) => (
-        <SummaryCard key={item.label} config={item} />
+        <SummaryCard
+          key={item.label}
+          config={item}
+          isSelected={statusFilter === item.statusRaw}
+          onClick={() => {
+            if (onStatusChange) {
+              // Si ya está seleccionado y no es el "Total", al volver a hacer clic quitamos el filtro
+              if (statusFilter === item.statusRaw && item.statusRaw !== "") {
+                onStatusChange("");
+              } else {
+                onStatusChange(item.statusRaw);
+              }
+            }
+          }}
+        />
       ))}
     </div>
   );
 }
 
-// Sub-componente para cada tarjeta individual
-function SummaryCard({ config }) {
+function SummaryCard({ config, isSelected, onClick }) {
   const Icon = config.icon;
   return (
     <div
-      className={`flex flex-col p-4 rounded-xl border shadow-sm transition-all hover:shadow-md ${
+      onClick={onClick}
+      className={`flex flex-col p-4 rounded-xl border transition-all cursor-pointer select-none ${
         config.bgColor
-      } ${config.borderColor} ${config.isTotal ? "border-2" : ""}`}
+      } ${config.borderColor} ${
+        isSelected
+          ? "ring-2 ring-offset-2 ring-gray-400 shadow-md scale-[1.02] opacity-100"
+          : "shadow-sm hover:shadow-md hover:-translate-y-1 opacity-80 hover:opacity-100"
+      } ${config.isTotal && !isSelected ? "border-2" : ""}`}
     >
       <div className="flex items-center justify-between mb-3">
         <span
-          className={`text-sm font-bold uppercase tracking-wider ${config.textColor} opacity-80`}
+          className={`text-sm font-bold uppercase tracking-wider ${config.textColor}`}
         >
           {config.label}
         </span>
