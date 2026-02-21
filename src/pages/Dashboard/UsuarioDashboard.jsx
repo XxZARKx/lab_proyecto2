@@ -27,6 +27,8 @@ export default function UsuarioDashboard() {
   const [query, setQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  // 1. AGREGAR ESTE NUEVO ESTADO
+  const [statusFilter, setStatusFilter] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -64,7 +66,7 @@ export default function UsuarioDashboard() {
 
         // Ordenar por fecha (más recientes primero)
         const sorted = [...data].sort(
-          (a, b) => new Date(b.fechaCreacion) - new Date(a.fechaCreacion)
+          (a, b) => new Date(b.fechaCreacion) - new Date(a.fechaCreacion),
         );
 
         setTickets(sorted);
@@ -80,18 +82,21 @@ export default function UsuarioDashboard() {
   // Buscar por ID, título y descripción
   useEffect(() => {
     const q = query.trim().toLowerCase();
-    const next = q
-      ? tickets.filter(
-          (t) =>
-            t.titulo?.toLowerCase().includes(q) ||
-            t.descripcion?.toLowerCase().includes(q) ||
-            String(t.id).includes(q)
-        )
-      : tickets;
+    const next = tickets.filter((t) => {
+      const matchesQuery =
+        q === "" ||
+        t.titulo?.toLowerCase().includes(q) ||
+        t.descripcion?.toLowerCase().includes(q) ||
+        String(t.id).includes(q);
+
+      const matchesStatus = statusFilter === "" || t.estado === statusFilter;
+
+      return matchesQuery && matchesStatus;
+    });
 
     setFiltered(next);
-    setCurrentPage(1); // reset al cambiar filtro/búsqueda
-  }, [query, tickets]);
+    setCurrentPage(1);
+  }, [query, tickets, statusFilter]);
 
   // Derivados de paginación (sobre filtered)
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -220,7 +225,11 @@ export default function UsuarioDashboard() {
           <h2 className="text-lg font-semibold text-gray-800 mb-4 px-1">
             Resumen de actividad
           </h2>
-          <StatusSummaryGrid tickets={tickets} />
+          <StatusSummaryGrid
+            tickets={tickets}
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+          />
         </div>
 
         {/* Actions + Search */}
@@ -295,7 +304,7 @@ export default function UsuarioDashboard() {
                       >
                         {h}
                       </th>
-                    )
+                    ),
                   )}
                 </tr>
               </thead>

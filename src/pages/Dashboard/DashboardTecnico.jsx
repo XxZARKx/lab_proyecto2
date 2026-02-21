@@ -29,6 +29,7 @@ export default function DashboardTecnico() {
   // PAGINACIÓN
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState("");
 
   const { logout, token } = useAuth();
   const navigate = useNavigate();
@@ -77,19 +78,22 @@ export default function DashboardTecnico() {
 
   // FILTRO por ID, título y descripción
   const q = query.trim().toLowerCase();
-  const filtered = q
-    ? tickets.filter(
-        (t) =>
-          t.titulo?.toLowerCase().includes(q) ||
-          t.descripcion?.toLowerCase().includes(q) ||
-          String(t.id).includes(q),
-      )
-    : tickets;
+  const filtered = tickets.filter((t) => {
+    const matchesQuery =
+      q === "" ||
+      t.titulo?.toLowerCase().includes(q) ||
+      t.descripcion?.toLowerCase().includes(q) ||
+      String(t.id).includes(q);
+
+    const matchesStatus = statusFilter === "" || t.estado === statusFilter;
+
+    return matchesQuery && matchesStatus;
+  });
 
   // reset de página al cambiar filtro
   useEffect(() => {
     setCurrentPage(1);
-  }, [query]);
+  }, [query, statusFilter]);
 
   // DERIVADOS DE PAGINACIÓN (sobre filtered)
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -176,7 +180,11 @@ export default function DashboardTecnico() {
           <h2 className="text-lg font-semibold text-gray-800 mb-4 px-1">
             Resumen de asignaciones
           </h2>
-          <StatusSummaryGrid tickets={tickets} />
+          <StatusSummaryGrid
+            tickets={tickets}
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+          />
         </section>
 
         {/* Tabla de tickets */}
